@@ -1,2 +1,2 @@
 # gym-ltl-tools
-Utilities to wrap gym environments using LTL rewards
+Utilities to wrap gymnasium environments using TL rewards.
