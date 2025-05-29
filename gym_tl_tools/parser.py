@@ -3,7 +3,7 @@ from typing import Pattern
 
 import numpy as np
 
-from gym_ltl_tools.typing import SymbolProp
+from gym_tl_tools.typing import SymbolProp
 
 
 class Parsers:
