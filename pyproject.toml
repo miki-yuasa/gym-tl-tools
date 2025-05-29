@@ -12,6 +12,9 @@ spottl = "^2.11.6"
 numpy = "^1.26.2"
 
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

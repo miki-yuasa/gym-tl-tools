@@ -12,3 +12,20 @@ class VarProp(NamedTuple):
     name: str
     args: list[str]
     func: Callable[..., float | int | NDArray | Any]
+
+
+class Transition(NamedTuple):
+    condition: str
+    next_state: int
+    is_trapped_next: bool = False
+
+
+class AtomicPredicates(NamedTuple):
+    num_aps: int
+    aps: list[str]
+
+
+class ObsProp(NamedTuple):
+    name: str
+    args: list[str]
+    func: Callable
