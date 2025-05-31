@@ -145,7 +145,7 @@ class Automaton:
         ----------
         tl_spec : str
             The temporal logic specification in LTL format.
-            e.g. "G (psi_1 -> F psi_2)".
+            e.g. "F(psi_1 & psi_2) | G(psi_3)".
         atomic_predicates : list[Predicate]
             A list of atomic predicates used in the temporal logic specification.
             Each predicate should be an instance of the Predicate class.

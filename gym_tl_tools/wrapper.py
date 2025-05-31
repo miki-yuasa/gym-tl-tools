@@ -29,8 +29,8 @@ class TlObservationReward(
             ```python
             from gym_tl_tools import Predicate
             atomic_predicates = [
-                Predicate("psi_1", "d_goal_robot < 5"),
-                Predicate("psi_2", "d_goal_robot < 10"),
+                Predicate("goal_reached", "distance_to_goal < 1.0"),
+                Predicate("hit_obstacle", "hit_obstacle < 1.0"),
             ]
 
             # Ensure that the environment's info dictionary contains these variables.
@@ -44,7 +44,7 @@ class TlObservationReward(
         Write your TL specification as a string, using the names of your atomic predicates.
         Example:
             ```python
-            tl_spec = "G (psi_1 -> F psi_2)"
+            tl_spec = "F(goal_reached) & G(!hit_obstacle)"
             ```
 
     3. **Wrap Your Environment**:
@@ -94,9 +94,9 @@ class TlObservationReward(
 
     atomic_predicates = [
         Predicate("goal_reached", "distance_to_goal < 1.0"),
-        Predicate("safe", "collision == 0"),
+        Predicate("hit_obstacle", "hit_obstacle < 1.0"),
     ]
-    tl_spec = "F goal_reached & G safe"
+    tl_spec = "F(goal_reached) & G(!hit_obstacle)"
 
     wrapped_env = TlObservationReward(
         env,
