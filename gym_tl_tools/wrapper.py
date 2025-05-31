@@ -27,7 +27,7 @@ class TlObservationReward(
         Make sure that your `info` dictionary from the environment contains the necessary variables to evaluate these predicates.
         Example:
             ```python
-            from gym_tl_tools.automaton import Predicate
+            from gym_tl_tools import Predicate
             atomic_predicates = [
                 Predicate("psi_1", "d_goal_robot < 5"),
                 Predicate("psi_2", "d_goal_robot < 10"),
@@ -51,7 +51,7 @@ class TlObservationReward(
         Pass your environment, TL specification, and atomic predicates to [TlObservationReward](http://_vscodecontentref_/0).
         Example:
             ```python
-            from gym_tl_tools.wrapper import TlObservationReward
+            from gym_tl_tools import TlObservationReward
             wrapped_env = TlObservationReward(
                 env,
                 tl_spec=tl_spec,
@@ -89,8 +89,8 @@ class TlObservationReward(
     Example
     -------
     ```python
-    from gym_tl_tools.automaton import Predicate
-    from gym_tl_tools.wrapper import TlObservationReward
+    from gym_tl_tools import Predicate
+    from gym_tl_tools import TlObservationReward
 
     atomic_predicates = [
         Predicate("goal_reached", "distance_to_goal < 1.0"),
