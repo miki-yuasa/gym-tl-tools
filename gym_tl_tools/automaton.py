@@ -1,14 +1,52 @@
-import math
 import random
 import re
 from collections import deque
 from typing import Literal, NamedTuple
 
+import numpy as np
 import spot
 from spot import twa as Twa
 
 from gym_tl_tools.parser import Parser
-from gym_tl_tools.typing import Predicate, Transition
+
+
+class Transition(NamedTuple):
+    """
+    Represents a transition in a finite state automaton from a LTL formula.
+
+    Attributes
+    ----------
+    next_state : int
+        The next automaton state after the transition.
+    condition : str
+        The condition that triggers the transition represented as a Boolean expression.
+        e.g. "psi_1 & psi_2" or "psi_1 | !psi_2".
+    is_trapped_next : bool
+        Indicates if the next state is a trap state (i.e., no further transitions are possible).
+        Defaults to False.
+    """
+
+    condition: str
+    next_state: int
+    is_trapped_next: bool = False
+
+
+class Predicate(NamedTuple):
+    """
+    Represents a predicate in a TL formula.
+
+    Attributes
+    ----------
+    name : str
+        The name of the atomic predicate.
+        e.g. "psi_goal_robot".
+    formula : str
+        The formula of the atomic predicate, which can be a Boolean expression.
+        e.g. "d_goal_robot < 5".
+    """
+
+    name: str
+    formula: str
 
 
 class RobustnessCounter(NamedTuple):
@@ -250,65 +288,58 @@ class Automaton:
             curr_edge = self.edges[curr_aut_state]
             transitions = curr_edge.transitions
 
-            # Calculate robustnesses of the transitions
-            robs, non_trap_robs, trap_robs = self.transition_robustness(
+            robs, pos_robs, pos_transitions = self.transition_robustness(
                 transitions, ap_rob_dict
             )
 
-            positive_robs: list[RobustnessCounter] = [
-                RobustnessCounter(rob, i) for i, rob in enumerate(robs) if rob > 0
-            ]
-
             # Check if there is only one positive transition robustness unless there are
             # multiple 0's
-            if len(positive_robs) != 1:
-                is_all_positive_zero: bool = all(
-                    int(pos_rob.robustness) == 0 for pos_rob in positive_robs
-                )
-                if is_all_positive_zero:
-                    is_containing_trap_state: bool = False
-                    trap_index = 0
-                    for i, pos_rob in enumerate(positive_robs):
-                        if transitions[pos_rob.ind].is_trapped_next:
-                            is_containing_trap_state = True
-                            trap_index = i
+            trans_rob: float
+            next_aut_state: int = -1
+            if len(pos_robs) == 1:
+                trans_rob: float = pos_robs[0]
+                next_aut_state: int = transitions[0].next_state
+            else:
+                if np.count_nonzero(pos_robs) == 0:
+                    # Check if there's any transition with a trapped next state
+                    trans_found: bool = False
+
+                    for pos_rob, trans in zip(pos_robs, pos_transitions):
+                        if trans.is_trapped_next:
+                            # If so, select that transition
+                            trans_rob = pos_rob
+                            next_aut_state = trans.next_state
+                            trans_found = True
                             break
+                        elif trans.next_state == curr_aut_state:
+                            # If the transition loops back to the current state, select it
+                            trans_rob = pos_rob
+                            next_aut_state = curr_aut_state
+                            trans_found = True
                         else:
                             pass
 
-                    if is_containing_trap_state:
-                        positive_robs = [positive_robs[trap_index]]
-                    else:
-                        next_states: list[AutomatonStateCounter] = []
-                        for pos_rob_ind, pos_rob in enumerate(positive_robs):
-                            next_states.append(
-                                AutomatonStateCounter(
-                                    transitions[pos_rob.ind].next_state, pos_rob_ind
-                                )
-                            )
-                        next_state_inds: list[int] = [
-                            state.ind
-                            for state in next_states
-                            if state.ind != curr_aut_state
-                        ]
-                        if next_state_inds:
-                            positive_robs = [
-                                positive_robs[random.choice(next_state_inds)]
-                            ]
-                        else:  # should only contain the current state as the next state
-                            positive_robs = [random.choice(positive_robs)]
-
+                    if not trans_found:
+                        # If no trapped transition is found, select a random positive transition
+                        selected_index: int = random.choice(range(len(pos_robs)))
+                        trans_rob = pos_robs[selected_index]
+                        next_aut_state = pos_transitions[selected_index].next_state
                 else:
                     raise ValueError(
                         "Error: Only one of the transition robustnesses can be positive.",
                         "The positive transitions were:",
-                        [transitions[rob.ind].condition for rob in positive_robs],
+                        [trans.condition for trans in pos_transitions],
+                        "with robustnesses:",
+                        pos_robs,
                     )
-            else:
-                pass
-            positive_rob: RobustnessCounter = deque(positive_robs).pop()
-            trans_rob: float = positive_rob.robustness
-            next_aut_state: int = transitions[positive_rob.ind].next_state
+
+            non_trap_robs: list[float] = []
+            trap_robs: list[float] = []
+            for pos_rob, trans in zip(pos_robs, pos_transitions):
+                if trans.is_trapped_next:
+                    trap_robs.append(pos_rob)
+                else:
+                    non_trap_robs.append(pos_rob)
 
             # Calculate the reward
             reward: float
@@ -346,25 +377,49 @@ class Automaton:
                         "Error: the transition robustness doesn't exit in the robustness set."
                     )
 
-            return (reward, next_aut_state)
+            return reward, next_aut_state
 
     def transition_robustness(
         self,
         transitions: list[Transition],
         ap_rob_dict: dict[str, float],
-    ) -> tuple[list[float], list[float], list[float]]:
+    ) -> tuple[list[float], list[float], list[Transition]]:
+        """
+        Calculate the robustness of transitions in the automaton.
+        This function computes the robustness values for each transition based on the
+        conditions of the transitions and the robustness values of the atomic predicates.
+
+        Parameters
+        ----------
+        transitions: list[Transition]
+            A list of transitions in the automaton.
+        ap_rob_dict: dict[str, float]
+            A dictionary mapping the names of atomic predicates to their robustness values.
+
+        Returns
+        -------
+        robs: list[float]
+            A list of robustness values for each transition.
+        pos_robs: list[float]
+            A list of positive robustness values
+        pos_transitions: list[Transition]
+            A list of transitions with positive robustness values.
+        """
+
         robs: list[float] = []
-        non_trap_robs: list[float] = []
-        trap_robs: list[float] = []
+        pos_robs: list[float] = []
+        pos_transitions: list[Transition] = []
+        pos_trap_robs: list[float] = []
+        pos_trap_transitions: list[Transition] = []
+        pos_non_trap_robs: list[float] = []
+        pos_non_trap_transitions: list[Transition] = []
         for trans in transitions:
             rob: float = self.parser.tl2rob(trans.condition, ap_rob_dict)
             robs.append(rob)
-            if trans.is_trapped_next:
-                trap_robs.append(rob)
-            else:
-                non_trap_robs.append(rob)
-
-        return robs, non_trap_robs, trap_robs
+            if rob > 0:
+                pos_robs.append(rob)
+                pos_transitions.append(trans)
+        return robs, pos_robs, pos_transitions
 
 
 def add_or_parentheses(condition: str) -> str:
