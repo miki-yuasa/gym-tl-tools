@@ -48,7 +48,7 @@ class Parser:
             return s in self.parentheses
 
     # Check if a token is symbol
-    def is_symbol(self, s: str) -> bool:
+    def is_symbol(self, s: Any) -> bool:
         return s in self.symbols
 
     # Check if a token is number
@@ -157,7 +157,7 @@ class Parser:
         cnt: int = 0
         while len(output) != 1:
             if self.is_symbol(output[cnt]):
-                symbol: str = output.pop(cnt)
+                symbol: str = cast(str, output.pop(cnt))
                 num_args: int = self.symbols[symbol].func.__code__.co_argcount
                 target_index: int = cnt - num_args
                 args: list[float] = []
@@ -197,7 +197,7 @@ class Parser:
         var_dict : dict[str, float]
             A dictionary mapping the variable names used in the TL spec to their current values.
             The keys should match the names of the atomic predicates defined in the spec.
-            e.g. {"psi_1": 1.0, "psi_2": 0.5, "psi_3": 0.0}.
+            e.g. {"d_goal_robot": 3.0, "d_robot_obstacle": 1.0, "d_goal_robot": 0.5}.
 
         Returns
         -------
