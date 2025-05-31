@@ -10,11 +10,12 @@ readme = "README.md"
 python = "^3.10,<3.14"
 spottl = "^2.13"
 numpy = "^1.26.2"
-pydantic = "^2.11.5"
+gymnasium = "^1.1.1"
 
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
+gym-multigrid = {git = "https://github.com/LIRA-illinois/gym-multigrid", rev = "dev"}
 
 [build-system]
 requires = ["poetry-core"]
