@@ -16,6 +16,7 @@ gymnasium = "^1.1.1"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
 gym-multigrid = {git = "https://github.com/LIRA-illinois/gym-multigrid", rev = "dev"}
+stable-baselines3 = "^2.6.0"
 
 [build-system]
 requires = ["poetry-core"]
