@@ -1,6 +1,4 @@
-import random
 import re
-from collections import deque
 from typing import Literal, NamedTuple
 
 import numpy as np
@@ -141,6 +139,21 @@ class Automaton:
         atomic_predicates: list[Predicate],
         parser: Parser = Parser(),
     ) -> None:
+        """
+        Initialize the Automaton with a temporal logic specification and atomic predicates.
+        Parameters
+        ----------
+        tl_spec : str
+            The temporal logic specification in LTL format.
+            e.g. "G (psi_1 -> F psi_2)".
+        atomic_predicates : list[Predicate]
+            A list of atomic predicates used in the temporal logic specification.
+            Each predicate should be an instance of the Predicate class.
+            e.g. [Predicate("psi_1", "d_goal_robot < 5"), Predicate("psi_2", "d_goal_robot < 10")].
+        parser : Parser = gym_tl_tools.parser.Parser()
+            An instance of the Parser class used to parse the temporal logic specification.
+            Defaults to a new instance of Parser.
+        """
         self.tl_spec: str = tl_spec
         self.atomic_predicates: list[Predicate] = atomic_predicates
         self.parser: Parser = parser
@@ -232,7 +245,7 @@ class Automaton:
         var_value_dict : dict[str, float]
             A dictionary mapping the variable names used in the atomic predicate definitions
             to their current values.
-            The keys should match the names of the atomic predicates
+            e.g. {"d_goal_robot": 3.0, "d_robot_obstacle": 1.0, "d_goal_robot": 0.5}.
 
         Returns
         -------
