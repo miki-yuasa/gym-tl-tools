@@ -197,7 +197,7 @@ class Parser:
         var_dict : dict[str, float]
             A dictionary mapping the variable names used in the TL spec to their current values.
             The keys should match the names of the atomic predicates defined in the spec.
-            e.g. {"d_goal_robot": 3.0, "d_robot_obstacle": 1.0, "d_goal_robot": 0.5}.
+            e.g. {"d_robot_goal": 3.0, "d_robot_obstacle": 1.0, "d_robot_goal": 0.5}.
 
         Returns
         -------

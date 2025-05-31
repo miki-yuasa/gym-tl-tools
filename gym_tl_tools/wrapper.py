@@ -29,22 +29,22 @@ class TlObservationReward(
             ```python
             from gym_tl_tools import Predicate
             atomic_predicates = [
-                Predicate("goal_reached", "distance_to_goal < 1.0"),
-                Predicate("hit_obstacle", "hit_obstacle < 1.0"),
+                Predicate("goal_reached", "d_robot_goal < 1.0"),
+                Predicate("obstacle_hit", "d_robot_obstacle < 1.0"),
             ]
 
             # Ensure that the environment's info dictionary contains these variables.
-            # For example, info might look like: {"d_goal_robot": 3.0, "d_robot_obstacle": 1.0}
+            # For example, info might look like: {"d_robot_goal": 3.0, "d_robot_obstacle": 1.0}
             _, info = your_env.reset()
             print(info)
-            # Output: {'d_goal_robot': 3.0, 'd_robot_obstacle': 1.0}
+            # Output: {'d_robot_goal': 3.0, 'd_robot_obstacle': 1.0}
             ```
 
     2. **Specify the Temporal Logic Formula**:
         Write your TL specification as a string, using the names of your atomic predicates.
         Example:
             ```python
-            tl_spec = "F(goal_reached) & G(!hit_obstacle)"
+            tl_spec = "F(goal_reached) & G(!obstacle_hit)"
             ```
 
     3. **Wrap Your Environment**:
@@ -93,10 +93,10 @@ class TlObservationReward(
     from gym_tl_tools import TlObservationReward
 
     atomic_predicates = [
-        Predicate("goal_reached", "distance_to_goal < 1.0"),
-        Predicate("hit_obstacle", "hit_obstacle < 1.0"),
+        Predicate("goal_reached", "d_robot_goal < 1.0"),
+        Predicate("obstacle_hit", "d_robot_obstacle < 1.0"),
     ]
-    tl_spec = "F(goal_reached) & G(!hit_obstacle)"
+    tl_spec = "F(goal_reached) & G(!obstacle_hit)"
 
     wrapped_env = TlObservationReward(
         env,

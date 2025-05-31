@@ -40,7 +40,7 @@ class Predicate(NamedTuple):
         e.g. "psi_goal_robot".
     formula : str
         The formula of the atomic predicate, which can be a Boolean expression.
-        e.g. "d_goal_robot < 5".
+        e.g. "d_robot_goal < 5".
     """
 
     name: str
@@ -149,7 +149,7 @@ class Automaton:
         atomic_predicates : list[Predicate]
             A list of atomic predicates used in the temporal logic specification.
             Each predicate should be an instance of the Predicate class.
-            e.g. [Predicate("psi_1", "d_goal_robot < 5"), Predicate("psi_2", "d_goal_robot < 10")].
+            e.g. [Predicate("psi_1", "d_robot_goal < 5"), Predicate("psi_2", "d_robot_goal < 10")].
         parser : Parser = gym_tl_tools.parser.Parser()
             An instance of the Parser class used to parse the temporal logic specification.
             Defaults to a new instance of Parser.
@@ -245,7 +245,7 @@ class Automaton:
         var_value_dict : dict[str, float]
             A dictionary mapping the variable names used in the atomic predicate definitions
             to their current values.
-            e.g. {"d_goal_robot": 3.0, "d_robot_obstacle": 1.0, "d_goal_robot": 0.5}.
+            e.g. {"d_robot_goal": 3.0, "d_robot_obstacle": 1.0, "d_robot_goal": 0.5}.
 
         Returns
         -------
