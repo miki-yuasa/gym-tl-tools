@@ -49,6 +49,22 @@ class Predicate(NamedTuple):
     formula: str
 
 
+class RobNextStatePair(NamedTuple):
+    """
+    Represents a pair of robustness value and transition.
+
+    Attributes
+    ----------
+    robustness : float
+        The robustness value of the transition.
+    next_state: int
+        The next state of the automaton after the transition.
+    """
+
+    robustness: float
+    next_state: int
+
+
 class RobustnessCounter(NamedTuple):
     robustness: float
     ind: int
@@ -196,12 +212,14 @@ class Automaton:
         self.trap_states: tuple[int, ...] = tuple(trap_states)
         self.edges: tuple[Edge, ...] = tuple(untrapped_edges)
 
-    def reset(self) -> None:
+    def reset(self, seed: int | None = None) -> None:
         """
         Reset the automaton to its initial state.
         """
         self.current_state: int = self.start
         self.status: Literal["intermediate", "goal", "trap"] = "intermediate"
+        # Initialize Numpy RNG if a seed is provided
+        self._np_rng: np.random.Generator = np.random.default_rng(seed)
 
     def step(self, var_value_dict: dict[str, float]) -> tuple[float, int]:
         """
@@ -288,58 +306,48 @@ class Automaton:
             curr_edge = self.edges[curr_aut_state]
             transitions = curr_edge.transitions
 
-            robs, pos_robs, pos_transitions = self.transition_robustness(
-                transitions, ap_rob_dict
-            )
+            (
+                pos_trap_rob_trans_pairs,
+                pos_non_trap_rob_trans_pairs,
+                zero_trap_rob_trans_pairs,
+                zero_non_trap_rob_trans_pairs,
+            ) = self.transition_robustness(transitions, ap_rob_dict)
 
-            # Check if there is only one positive transition robustness unless there are
-            # multiple 0's
             trans_rob: float
-            next_aut_state: int = -1
-            if len(pos_robs) == 1:
-                trans_rob: float = pos_robs[0]
-                next_aut_state: int = transitions[0].next_state
+            next_aut_state: int
+            if len(pos_trap_rob_trans_pairs) == 1:
+                # If there is only one positive transition robustness leading to a trap state
+                trans_rob, next_aut_state = pos_trap_rob_trans_pairs[0]
+            elif len(pos_non_trap_rob_trans_pairs) == 1:
+                # If there is only one positive transition robustness leading to a non-trap state
+                trans_rob, next_aut_state = pos_non_trap_rob_trans_pairs[0]
+            elif zero_trap_rob_trans_pairs:
+                # If there are no positive transition robustnesses, but there are zero transition robustnesses
+                # leading to a trap state, select the first one
+                trans_rob, next_aut_state = zero_trap_rob_trans_pairs[0]
+            elif zero_non_trap_rob_trans_pairs:
+                # If there are no positive transition robustnesses, but there are zero transition robustnesses
+                # leading to a non-trap state, select the first one
+                selected_index: int = self._np_rng.integers(
+                    0, len(zero_non_trap_rob_trans_pairs)
+                )
+                trans_rob, next_aut_state = zero_non_trap_rob_trans_pairs[
+                    selected_index
+                ]
             else:
-                if np.count_nonzero(pos_robs) == 0:
-                    # Check if there's any transition with a trapped next state
-                    trans_found: bool = False
-
-                    for pos_rob, trans in zip(pos_robs, pos_transitions):
-                        if trans.is_trapped_next:
-                            # If so, select that transition
-                            trans_rob = pos_rob
-                            next_aut_state = trans.next_state
-                            trans_found = True
-                            break
-                        elif trans.next_state == curr_aut_state:
-                            # If the transition loops back to the current state, select it
-                            trans_rob = pos_rob
-                            next_aut_state = curr_aut_state
-                            trans_found = True
-                        else:
-                            pass
-
-                    if not trans_found:
-                        # If no trapped transition is found, select a random positive transition
-                        selected_index: int = random.choice(range(len(pos_robs)))
-                        trans_rob = pos_robs[selected_index]
-                        next_aut_state = pos_transitions[selected_index].next_state
-                else:
-                    raise ValueError(
-                        "Error: Only one of the transition robustnesses can be positive.",
-                        "The positive transitions were:",
-                        [trans.condition for trans in pos_transitions],
-                        "with robustnesses:",
-                        pos_robs,
-                    )
-
-            non_trap_robs: list[float] = []
-            trap_robs: list[float] = []
-            for pos_rob, trans in zip(pos_robs, pos_transitions):
-                if trans.is_trapped_next:
-                    trap_robs.append(pos_rob)
-                else:
-                    non_trap_robs.append(pos_rob)
+                raise ValueError(
+                    "Error: No singular positive or zero transition robustnesses found for the current automaton state.",
+                    "Current automaton state:",
+                    curr_aut_state,
+                    "Positive trap transitions:",
+                    pos_trap_rob_trans_pairs,
+                    "Positive non-trap transitions:",
+                    pos_non_trap_rob_trans_pairs,
+                    "Zero trap transitions:",
+                    zero_trap_rob_trans_pairs,
+                    "Zero non-trap transitions:",
+                    zero_non_trap_rob_trans_pairs,
+                )
 
             # Calculate the reward
             reward: float
@@ -359,16 +367,19 @@ class Automaton:
                 #    beta * 1 / max(non_trap_robs) - (1 - beta) * 1 / max(trap_robs)
                 # )
                 if dense_reward:
+                    non_trap_robs: list[float] = [
+                        pair.robustness for pair in pos_non_trap_rob_trans_pairs
+                    ] + [pair.robustness for pair in zero_non_trap_rob_trans_pairs]
                     non_trap_robs.remove(trans_rob)
                     reward = gamma * max(non_trap_robs)
                 else:
                     reward = 0
             else:
-                if trans_rob in non_trap_robs:
+                if next_aut_state not in self.trap_states:
                     reward = (
                         delta * trans_rob
                     )  # alpha * trans_rob - (1 - alpha) * max(trap_robs)
-                elif trans_rob in trap_robs:
+                elif next_aut_state in self.trap_states:
                     reward = (
                         -delta * trans_rob
                     )  # -(1 - alpha) * max(non_trap_robs) - alpha * trans_rob
@@ -383,7 +394,12 @@ class Automaton:
         self,
         transitions: list[Transition],
         ap_rob_dict: dict[str, float],
-    ) -> tuple[list[float], list[float], list[Transition]]:
+    ) -> tuple[
+        list[RobNextStatePair],
+        list[RobNextStatePair],
+        list[RobNextStatePair],
+        list[RobNextStatePair],
+    ]:
         """
         Calculate the robustness of transitions in the automaton.
         This function computes the robustness values for each transition based on the
@@ -398,28 +414,50 @@ class Automaton:
 
         Returns
         -------
-        robs: list[float]
-            A list of robustness values for each transition.
-        pos_robs: list[float]
-            A list of positive robustness values
-        pos_transitions: list[Transition]
-            A list of transitions with positive robustness values.
+        pos_trap_rob_trans_pairs : list[RobNextStatePair]
+            A list of pairs of positive robustness values and transitions that lead to trap states.
+        pos_non_trap_rob_trans_pairs : list[RobNextStatePair]
+            A list of pairs of positive robustness values and transitions that do not lead to trap states.
+        zero_trap_rob_trans_pairs : list[RobNextStatePair]
+            A list of pairs of zero robustness values and transitions that lead to trap states.
+        zero_non_trap_rob_trans_pairs : list[RobNextStatePair]
+            A list of pairs of zero robustness values and transitions that do not lead to trap states.
         """
 
         robs: list[float] = []
-        pos_robs: list[float] = []
-        pos_transitions: list[Transition] = []
-        pos_trap_robs: list[float] = []
-        pos_trap_transitions: list[Transition] = []
-        pos_non_trap_robs: list[float] = []
-        pos_non_trap_transitions: list[Transition] = []
+        pos_trap_rob_trans_pairs: list[RobNextStatePair] = []
+        pos_non_trap_rob_trans_pairs: list[RobNextStatePair] = []
+        zero_trap_rob_trans_pairs: list[RobNextStatePair] = []
+        zero_non_trap_rob_trans_pairs: list[RobNextStatePair] = []
+
         for trans in transitions:
             rob: float = self.parser.tl2rob(trans.condition, ap_rob_dict)
             robs.append(rob)
-            if rob > 0:
-                pos_robs.append(rob)
-                pos_transitions.append(trans)
-        return robs, pos_robs, pos_transitions
+            match (rob, trans.is_trapped_next):
+                case (0, True):
+                    zero_trap_rob_trans_pairs.append(
+                        RobNextStatePair(rob, trans.next_state)
+                    )
+                case (0, False):
+                    zero_non_trap_rob_trans_pairs.append(
+                        RobNextStatePair(rob, trans.next_state)
+                    )
+                case (rob, True) if rob > 0:
+                    pos_trap_rob_trans_pairs.append(
+                        RobNextStatePair(rob, trans.next_state)
+                    )
+                case (rob, False) if rob > 0:
+                    pos_non_trap_rob_trans_pairs.append(
+                        RobNextStatePair(rob, trans.next_state)
+                    )
+                case _:
+                    pass
+        return (
+            pos_trap_rob_trans_pairs,
+            pos_non_trap_rob_trans_pairs,
+            zero_trap_rob_trans_pairs,
+            zero_non_trap_rob_trans_pairs,
+        )
 
 
 def add_or_parentheses(condition: str) -> str:
