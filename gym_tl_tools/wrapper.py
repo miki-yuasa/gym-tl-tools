@@ -228,6 +228,9 @@ class TlObservationReward(
             Should contain the variable keys and values that define the atomic predicates.
         """
         obs, info = self.env.reset(seed=seed, options=options)
+        info_updates = self.var_value_info(obs, info)
+        # Update the info dict with the variable values
+        info.update(info_updates)
         self.automaton.reset(seed=seed)
         new_obs = self.observation(obs)
         return new_obs, info
@@ -258,6 +261,21 @@ class TlObservationReward(
             Should contain the variable keys and values that define the atomic predicates.
         """
         obs, _, terminated, truncated, info = self.env.step(action)
+        info_updates = self.var_value_info(obs, info)
+        # Update the info dict with the variable values
+        info.update(info_updates)
         reward, _ = self.automaton.step(info)
         new_obs = self.observation(obs)
         return new_obs, reward, terminated, truncated, info
+
+    def var_value_info(self, obs: ObsType, info: dict[str, Any]) -> dict[str, Any]:
+        """
+        Get the variable values from the environment's info dictionary.
+
+        Returns
+        -------
+        dict[str, Any]
+            A dictionary containing the variable keys and their corresponding values.
+            This is used to evaluate the atomic predicates in the automaton.
+        """
+        return {}

@@ -9,8 +9,8 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10,<3.14"
 spottl = "^2.13"
-numpy = ">=1.26.2"
-gymnasium = ">=1.1.1"
+numpy = ">=1.21"
+gymnasium = ">=0.26"
 
 
 [tool.poetry.group.dev.dependencies]
