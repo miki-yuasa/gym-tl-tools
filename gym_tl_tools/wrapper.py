@@ -119,7 +119,9 @@ class TlObservationReward(
         tl_spec: str,
         atomic_predicates: list[Predicate],
         parser: Parser = Parser(),
-        *,
+        var_value_info_generator: Callable[
+            [Env[ObsType, ActType], ObsType, dict[str, Any]], dict[str, Any]
+        ] = lambda env, obs, info: {},
         dict_aut_state_key: str = "aut_state",
     ):
         """
@@ -136,6 +138,10 @@ class TlObservationReward(
         parser : Parser = gym_tl_tools.Parser()
             An instance of the Parser class for parsing temporal logic expressions.
             Defaults to a new instance of Parser.
+        var_value_info_generator : Callable[[Env[ObsType, ActType], ObsType, dict[str, Any]], dict[str, Any]] = lambda env, obs, info: {}
+            A function that generates a dictionary of variable values from the environment's observation and info.
+            This function should return a dictionary where keys are variable names and values are their corresponding values.
+            This is used to evaluate the atomic predicates in the automaton.
         dict_aut_state_key : str = "aut_state"
             The key under which the automaton state will be stored in the observation space.
             Defaults to "aut_state".
@@ -146,8 +152,10 @@ class TlObservationReward(
             atomic_predicates=atomic_predicates,
             parser=parser,
             dict_aut_state_key=dict_aut_state_key,
+            var_value_info_generator=var_value_info_generator,
         )
         ObservationWrapper.__init__(self, env)
+        self.var_value_info_generator = var_value_info_generator
         self.parser = Parser()
         self.automaton = Automaton(tl_spec, atomic_predicates, parser=parser)
 
@@ -228,7 +236,7 @@ class TlObservationReward(
             Should contain the variable keys and values that define the atomic predicates.
         """
         obs, info = self.env.reset(seed=seed, options=options)
-        info_updates = self.var_value_info(obs, info)
+        info_updates = self.var_value_info_generator(self.env, obs, info)
         # Update the info dict with the variable values
         info.update(info_updates)
         self.automaton.reset(seed=seed)
@@ -261,22 +269,9 @@ class TlObservationReward(
             Should contain the variable keys and values that define the atomic predicates.
         """
         obs, _, terminated, truncated, info = self.env.step(action)
-        info_updates = self.var_value_info(obs, info)
+        info_updates = self.var_value_info_generator(self.env, obs, info)
         # Update the info dict with the variable values
         info.update(info_updates)
         reward, _ = self.automaton.step(info)
         new_obs = self.observation(obs)
         return new_obs, reward, terminated, truncated, info
-
-    def var_value_info(self, obs: ObsType, info: dict[str, Any]) -> dict[str, Any]:
-        """
-        Get the variable values from the environment's info dictionary.
-
-        Returns
-        -------
-        updates: dict[str, Any]
-            A dictionary containing the variable keys and their corresponding values.
-            This is used to evaluate the atomic predicates in the automaton.
-        """
-        updates: dict[str, Any] = {}
-        return updates
