@@ -274,8 +274,9 @@ class TlObservationReward(
 
         Returns
         -------
-        dict[str, Any]
+        updates: dict[str, Any]
             A dictionary containing the variable keys and their corresponding values.
             This is used to evaluate the atomic predicates in the automaton.
         """
-        return {}
+        updates: dict[str, Any] = {}
+        return updates
