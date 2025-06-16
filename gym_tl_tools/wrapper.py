@@ -353,5 +353,18 @@ class TLObservationReward(
         ):
             terminated = True
 
+        if next_aut_state in self.automaton.goal_states:
+            info.update(
+                {
+                    "is_success": True,
+                }
+            )
+        else:
+            info.update(
+                {
+                    "is_success": False,
+                }
+            )
+
         new_obs = self.observation(obs)
         return new_obs, reward, terminated, truncated, info
