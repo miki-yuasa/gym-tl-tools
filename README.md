@@ -49,12 +49,12 @@ tl_spec = "F(goal_reached) & G(!obstacle_hit)"
 ```
 
 ### 3. Wrap Your Environment
-Pass your environment, TL specification, and atomic predicates to `TlObservationReward`:
+Pass your environment, TL specification, and atomic predicates to `TLObservationReward`:
 
 ```python
-from gym_tl_tools import TlObservationReward
+from gym_tl_tools import TLObservationReward
 
-wrapped_env = TlObservationReward(
+wrapped_env = TLObservationReward(
     env,
     tl_spec=tl_spec,
     atomic_predicates=atomic_predicates,
@@ -86,7 +86,7 @@ while not done:
 import gymnasium as gym
 
 from gym_tl_tools import Predicate
-from gym_tl_tools import TlObservationReward
+from gym_tl_tools import TLObservationReward
 
 atomic_predicates = [
     Predicate("goal_reached", "d_robot_goal < 1.0"),
@@ -101,7 +101,7 @@ _, info = env.reset()
 print(info)
 # Output: {'d_robot_goal': 3.0, 'd_robot_obstacle': 1.0}
 
-wrapped_env = TlObservationReward(
+wrapped_env = TLObservationReward(
     env,
     tl_spec=tl_spec,
     atomic_predicates=atomic_predicates,

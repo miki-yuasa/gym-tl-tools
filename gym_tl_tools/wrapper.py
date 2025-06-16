@@ -9,7 +9,7 @@ from gym_tl_tools.automaton import Automaton, Predicate
 from gym_tl_tools.parser import Parser
 
 
-class TlObservationReward(
+class TLObservationReward(
     ObservationWrapper[WrapperObsType, ActType, ObsType], RecordConstructorArgs
 ):
     """
@@ -48,11 +48,11 @@ class TlObservationReward(
             ```
 
     3. **Wrap Your Environment**:
-        Pass your environment, TL specification, and atomic predicates to [TlObservationReward](http://_vscodecontentref_/0).
+        Pass your environment, TL specification, and atomic predicates to [TLObservationReward](http://_vscodecontentref_/0).
         Example:
             ```python
-            from gym_tl_tools import TlObservationReward
-            wrapped_env = TlObservationReward(
+            from gym_tl_tools import TLObservationReward
+            wrapped_env = TLObservationReward(
                 env,
                 tl_spec=tl_spec,
                 atomic_predicates=atomic_predicates,
@@ -90,7 +90,7 @@ class TlObservationReward(
     -------
     ```python
     from gym_tl_tools import Predicate
-    from gym_tl_tools import TlObservationReward
+    from gym_tl_tools import TLObservationReward
 
     atomic_predicates = [
         Predicate("goal_reached", "d_robot_goal < 1.0"),
@@ -98,7 +98,7 @@ class TlObservationReward(
     ]
     tl_spec = "F(goal_reached) & G(!obstacle_hit)"
 
-    wrapped_env = TlObservationReward(
+    wrapped_env = TLObservationReward(
         env,
         tl_spec=tl_spec,
         atomic_predicates=atomic_predicates,
@@ -125,7 +125,7 @@ class TlObservationReward(
         dict_aut_state_key: str = "aut_state",
     ):
         """
-        Initialize the TlObservationReward wrapper.
+        Initialize the TLObservationReward wrapper.
         Parameters
         ----------
         env : Env[ObsType, ActType]
@@ -268,10 +268,11 @@ class TlObservationReward(
             Additional information from the step.
             Should contain the variable keys and values that define the atomic predicates.
         """
-        obs, _, terminated, truncated, info = self.env.step(action)
+        obs, orig_reward, terminated, truncated, info = self.env.step(action)
         info_updates = self.var_value_info_generator(self.env, obs, info)
         # Update the info dict with the variable values
         info.update(info_updates)
+        info.update({"original_reward": orig_reward})
         reward, _ = self.automaton.step(info)
         new_obs = self.observation(obs)
         return new_obs, reward, terminated, truncated, info
