@@ -163,6 +163,7 @@ class TLObservationReward(
             "dense_reward": False,
             "dense_reward_scale": 0.01,
         },
+        early_termination: bool = True,
         parser: Parser = Parser(),
         dict_aut_state_key: str = "aut_state",
     ):
@@ -205,6 +206,8 @@ class TLObservationReward(
                 Scale factor for the dense reward.
                 This is applied to the computed dense reward based on the robustness to the next non-trap automaton's state.
                 If dense rewards are enabled, this factor scales the reward returned by the automaton.
+        early_termination : bool = True
+            Whether to terminate the episode when the automaton reaches a terminal state.
         dict_aut_state_key : str = "aut_state"
             The key under which the automaton state will be stored in the observation space.
             Defaults to "aut_state".
@@ -216,6 +219,7 @@ class TLObservationReward(
             parser=parser,
             reward_config=reward_config,
             dict_aut_state_key=dict_aut_state_key,
+            early_termination=early_termination,
             var_value_info_generator=var_value_info_generator,
         )
         ObservationWrapper.__init__(self, env)
@@ -223,6 +227,7 @@ class TLObservationReward(
         self.parser = Parser()
         self.automaton = Automaton(tl_spec, atomic_predicates, parser=parser)
         self.reward_config = RewardConfig(**reward_config)
+        self.early_termination: bool = early_termination
 
         aut_state_space = Discrete(self.automaton.num_states)
 
@@ -338,6 +343,15 @@ class TLObservationReward(
         # Update the info dict with the variable values
         info.update(info_updates)
         info.update({"original_reward": orig_reward})
-        reward, _ = self.automaton.step(info, **self.reward_config.model_dump())
+        reward, next_aut_state = self.automaton.step(
+            info, **self.reward_config.model_dump()
+        )
+        if (
+            self.early_termination
+            and next_aut_state
+            in self.automaton.goal_states + self.automaton.trap_states
+        ):
+            terminated = True
+
         new_obs = self.observation(obs)
         return new_obs, reward, terminated, truncated, info
