@@ -160,7 +160,7 @@ class Automaton:
 
         aut: Twa = spot.translate(tl_spec, "Buchi", "state-based", "complete")
         aut_hoa: str = aut.to_str("hoa")
-        self.num_states: int = int(aut.num_states())
+        self.num_states: int = int(aut.num_states())  # type: ignore
         self.start: int = int(*re.findall("Start: (\d+)\n", aut_hoa))
 
         num_used_aps: int = int(*re.findall('AP: (\d+) "', aut_hoa))
@@ -234,7 +234,14 @@ class Automaton:
         # Initialize Numpy RNG if a seed is provided
         self._np_rng: np.random.Generator = np.random.default_rng(seed)
 
-    def step(self, var_value_dict: dict[str, float]) -> tuple[float, int]:
+    def step(
+        self,
+        var_value_dict: dict[str, float],
+        terminal_state_reward: float = 5,
+        state_trans_reward_scale: float = 100,
+        dense_reward: bool = False,
+        dense_reward_scale: float = 0.01,
+    ) -> tuple[float, int]:
         """
         Step the automaton to the next state based on the current predicate values.
         This function updates the current state of the automaton based on the
@@ -246,6 +253,8 @@ class Automaton:
             A dictionary mapping the variable names used in the atomic predicate definitions
             to their current values.
             e.g. {"d_robot_goal": 3.0, "d_robot_obstacle": 1.0, "d_robot_goal": 0.5}.
+        terminal_state_reward : float = 5
+
 
         Returns
         -------
@@ -266,7 +275,12 @@ class Automaton:
         }
 
         reward, next_state = self.tl_reward(
-            ap_rob_dict, self.current_state, dense_reward=False
+            ap_rob_dict,
+            self.current_state,
+            terminal_state_reward=terminal_state_reward,
+            state_trans_reward_scale=state_trans_reward_scale,
+            dense_reward=dense_reward,
+            dense_reward_scale=dense_reward_scale,
         )
 
         # Update the current state of the automaton
@@ -286,8 +300,10 @@ class Automaton:
         self,
         ap_rob_dict: dict[str, float],
         curr_aut_state: int,
-        dense_reward: bool = False,
         terminal_state_reward: float = 5,
+        state_trans_reward_scale: float = 100,
+        dense_reward: bool = False,
+        dense_reward_scale: float = 0.01,
     ) -> tuple[float, int]:
         """
         Calculate the reward of the step from a given automaton.
@@ -341,8 +357,8 @@ class Automaton:
             elif zero_non_trap_rob_trans_pairs:
                 # If there are no positive transition robustnesses, but there are zero transition robustnesses
                 # leading to a non-trap state, select the first one
-                selected_index: int = self._np_rng.integers(
-                    0, len(zero_non_trap_rob_trans_pairs)
+                selected_index: int = int(
+                    self._np_rng.integers(0, len(zero_non_trap_rob_trans_pairs))
                 )
                 trans_rob, next_aut_state = zero_non_trap_rob_trans_pairs[
                     selected_index
@@ -365,10 +381,10 @@ class Automaton:
             # Calculate the reward
             reward: float
             # Weight for reward calculation
-            alpha: float = 0.7
-            beta: float = 0.5
-            gamma: float = 0.01
-            delta: float = 100
+            # alpha: float = 0.7
+            # beta: float = 0.5
+            gamma: float = dense_reward_scale
+            delta: float = state_trans_reward_scale
 
             if next_aut_state == curr_aut_state:
                 # non_trap_robs.remove(trans_rob)

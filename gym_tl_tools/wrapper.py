@@ -1,12 +1,48 @@
-from typing import Any, Callable, SupportsFloat
+from typing import Any, Callable, SupportsFloat, TypedDict
 
 from gymnasium import Env, ObservationWrapper
 from gymnasium.core import ActType, ObsType, WrapperObsType
 from gymnasium.spaces import Dict, Discrete, Tuple
 from gymnasium.utils import RecordConstructorArgs
+from pydantic import BaseModel
 
 from gym_tl_tools.automaton import Automaton, Predicate
 from gym_tl_tools.parser import Parser
+
+
+class RewardConfigDict(TypedDict, total=False):
+    """
+    Configuration dictionary for the reward structure in the TLObservationReward wrapper.
+    This dictionary is used to define how rewards are computed based on the automaton's state and the environment's info.
+
+    Attributes
+    ----------
+    terminal_state_reward : float
+        Reward given when the automaton reaches a terminal state in addition to the automaton state transition reward.
+    state_trans_reward_scale : float
+        Scale factor for the reward based on the automaton's state transition robustness.
+        This is applied to the robustness computed from the automaton's transition.
+        If the transition leads to a trap state, the reward is set to be negative, scaled by this factor.
+    dense_reward : bool
+        Whether to use dense rewards (True) or sparse rewards (False).
+        Dense rewards provide a continuous reward signal based on the robustness of the transition to the next non-trap state.
+    dense_reward_scale : float
+        Scale factor for the dense reward.
+        This is applied to the computed dense reward based on the robustness to the next non-trap automaton's state.
+        If dense rewards are enabled, this factor scales the reward returned by the automaton.
+    """
+
+    terminal_state_reward: float
+    state_trans_reward_scale: float
+    dense_reward: bool
+    dense_reward_scale: float
+
+
+class RewardConfig(BaseModel):
+    terminal_state_reward: float = 5
+    state_trans_reward_scale: float = 100
+    dense_reward: bool = False
+    dense_reward_scale: float = 0.01
 
 
 class TLObservationReward(
@@ -121,11 +157,18 @@ class TLObservationReward(
         var_value_info_generator: Callable[
             [Env[ObsType, ActType], ObsType, dict[str, Any]], dict[str, Any]
         ] = lambda env, obs, info: {},
+        reward_config: RewardConfigDict = {
+            "terminal_state_reward": 5,
+            "state_trans_reward_scale": 100,
+            "dense_reward": False,
+            "dense_reward_scale": 0.01,
+        },
         parser: Parser = Parser(),
         dict_aut_state_key: str = "aut_state",
     ):
         """
         Initialize the TLObservationReward wrapper.
+
         Parameters
         ----------
         env : Env[ObsType, ActType]
@@ -142,6 +185,26 @@ class TLObservationReward(
             A function that generates a dictionary of variable values from the environment's observation and info.
             This function should return a dictionary where keys are variable names and values are their corresponding values.
             This is used to evaluate the atomic predicates in the automaton.
+        reward_config : RewardConfigDict = {
+            "terminal_state_reward": 5,
+            "state_trans_reward_scale": 100,
+            "dense_reward": False,
+            "dense_reward_scale": 0.01,
+        }
+            A dictionary containing the configuration for the reward structure.
+            - `terminal_state_reward` : float
+                Reward given when the automaton reaches a terminal state in addition to the automaton state transition reward.
+            - `state_trans_reward_scale` : float
+                Scale factor for the reward based on the automaton's state transition robustness.
+                This is applied to the robustness computed from the automaton's transition.
+                If the transition leads to a trap state, the reward is set to be negative, scaled by this factor.
+            - `dense_reward` : bool
+                Whether to use dense rewards (True) or sparse rewards (False).
+                Dense rewards provide a continuous reward signal based on the robustness of the transition to the next non-trap state.
+            - `dense_reward_scale` : float
+                Scale factor for the dense reward.
+                This is applied to the computed dense reward based on the robustness to the next non-trap automaton's state.
+                If dense rewards are enabled, this factor scales the reward returned by the automaton.
         dict_aut_state_key : str = "aut_state"
             The key under which the automaton state will be stored in the observation space.
             Defaults to "aut_state".
@@ -151,6 +214,7 @@ class TLObservationReward(
             tl_spec=tl_spec,
             atomic_predicates=atomic_predicates,
             parser=parser,
+            reward_config=reward_config,
             dict_aut_state_key=dict_aut_state_key,
             var_value_info_generator=var_value_info_generator,
         )
@@ -158,6 +222,7 @@ class TLObservationReward(
         self.var_value_info_generator = var_value_info_generator
         self.parser = Parser()
         self.automaton = Automaton(tl_spec, atomic_predicates, parser=parser)
+        self.reward_config = RewardConfig(**reward_config)
 
         aut_state_space = Discrete(self.automaton.num_states)
 
@@ -273,6 +338,6 @@ class TLObservationReward(
         # Update the info dict with the variable values
         info.update(info_updates)
         info.update({"original_reward": orig_reward})
-        reward, _ = self.automaton.step(info)
+        reward, _ = self.automaton.step(info, **self.reward_config.model_dump())
         new_obs = self.observation(obs)
         return new_obs, reward, terminated, truncated, info
