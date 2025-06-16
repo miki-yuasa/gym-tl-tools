@@ -211,3 +211,38 @@ class Parser:
         robustness: float = self.evaluate(parsed_tokens, var_dict)
 
         return robustness
+
+
+def replace_special_characters(spec: str) -> str:
+    """
+    Replace special characters in the spec with underscores so that it can be used as a file name.
+
+    Parameters
+    ----------
+    spec: str
+        spec to be replaced.
+        The spec can contain special characters like spaces, &, |, etc.
+        These characters are replaced with underscores to create a valid file name.
+
+    Returns
+    -------
+    replaced_spec: str
+        spec with special characters replaced by underscores
+
+    Examples
+    --------
+    ```python
+    spec = replace_special_characters("F(psi_1 | psi_2) & G(!psi_3)")
+    print(spec)
+    # Output: "F(psi_1_or_psi_2)_and_G(!psi_3)"
+    ```
+    """
+
+    replaced_spec: str = (
+        spec.replace(" ", "_")
+        .replace("&", "_and_")
+        .replace("|", "_or_")
+        .replace("__", "_")
+    )
+
+    return replaced_spec
