@@ -215,7 +215,7 @@ class Automaton:
                         else:
                             is_trapped_in_all_trans = False
 
-                    if is_trapped_in_all_trans:
+                    if is_trapped_in_all_trans and edge.transitions:
                         untrapped_edges[i].is_trap_state = True
                         trap_states.append(edge.state)
                     else:
@@ -340,6 +340,7 @@ class Automaton:
                 pos_non_trap_rob_trans_pairs,
                 zero_trap_rob_trans_pairs,
                 zero_non_trap_rob_trans_pairs,
+                non_trap_rob_trans_pairs,
             ) = self.transition_robustness(transitions, ap_rob_dict)
 
             trans_rob: float
@@ -397,8 +398,9 @@ class Automaton:
                 # )
                 if dense_reward:
                     non_trap_robs: list[float] = [
-                        pair.robustness for pair in pos_non_trap_rob_trans_pairs
-                    ] + [pair.robustness for pair in zero_non_trap_rob_trans_pairs]
+                        pair.robustness for pair in non_trap_rob_trans_pairs
+                    ]
+                    # ] + [pair.robustness for pair in zero_non_trap_rob_trans_pairs]
                     non_trap_robs.remove(trans_rob)
                     reward = gamma * max(non_trap_robs)
                 else:
@@ -424,6 +426,7 @@ class Automaton:
         transitions: list[Transition],
         ap_rob_dict: dict[str, float],
     ) -> tuple[
+        list[RobNextStatePair],
         list[RobNextStatePair],
         list[RobNextStatePair],
         list[RobNextStatePair],
@@ -458,6 +461,7 @@ class Automaton:
         pos_non_trap_rob_trans_pairs: list[RobNextStatePair] = []
         zero_trap_rob_trans_pairs: list[RobNextStatePair] = []
         zero_non_trap_rob_trans_pairs: list[RobNextStatePair] = []
+        non_trap_rob_trans_pairs: list[RobNextStatePair] = []
 
         for trans in transitions:
             rob: float = self.parser.tl2rob(trans.condition, ap_rob_dict)
@@ -471,12 +475,19 @@ class Automaton:
                     zero_non_trap_rob_trans_pairs.append(
                         RobNextStatePair(rob, trans.next_state)
                     )
+                    non_trap_rob_trans_pairs.append(
+                        RobNextStatePair(rob, trans.next_state)
+                    )
+
                 case (rob, True) if rob > 0:
                     pos_trap_rob_trans_pairs.append(
                         RobNextStatePair(rob, trans.next_state)
                     )
                 case (rob, False) if rob > 0:
                     pos_non_trap_rob_trans_pairs.append(
+                        RobNextStatePair(rob, trans.next_state)
+                    )
+                    non_trap_rob_trans_pairs.append(
                         RobNextStatePair(rob, trans.next_state)
                     )
                 case _:
@@ -486,6 +497,7 @@ class Automaton:
             pos_non_trap_rob_trans_pairs,
             zero_trap_rob_trans_pairs,
             zero_non_trap_rob_trans_pairs,
+            non_trap_rob_trans_pairs,
         )
 
 
