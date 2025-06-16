@@ -490,6 +490,10 @@ class Automaton:
                     non_trap_rob_trans_pairs.append(
                         RobNextStatePair(rob, trans.next_state)
                     )
+                case (rob, False) if rob < 0:
+                    non_trap_rob_trans_pairs.append(
+                        RobNextStatePair(rob, trans.next_state)
+                    )
                 case _:
                     pass
         return (
