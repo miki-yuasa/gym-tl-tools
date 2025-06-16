@@ -118,10 +118,10 @@ class TLObservationReward(
         env: Env[ObsType, ActType],
         tl_spec: str,
         atomic_predicates: list[Predicate],
-        parser: Parser = Parser(),
         var_value_info_generator: Callable[
             [Env[ObsType, ActType], ObsType, dict[str, Any]], dict[str, Any]
         ] = lambda env, obs, info: {},
+        parser: Parser = Parser(),
         dict_aut_state_key: str = "aut_state",
     ):
         """
