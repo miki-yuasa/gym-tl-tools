@@ -197,29 +197,33 @@ class Automaton:
             edge.state for edge in untrapped_edges if edge.is_trap_state
         ]
         goal_states: list[int] = []
-        for _ in range(len(untrapped_edges)):
-            for i, edge in enumerate(untrapped_edges):
-                if edge.is_trap_state:
-                    pass
-                else:
-                    is_trapped_in_all_trans = True
-                    for j, transition in enumerate(edge.transitions):
-                        if transition.next_state in trap_states:
-                            if edge.is_inf_zero_acc:
-                                edge.transitions.pop(j)
-                                goal_states.append(edge.state)
-                            else:
-                                edge.transitions[j] = Transition(
-                                    transition.condition, transition.next_state, True
-                                )
+        # for _ in range(len(untrapped_edges)):
+        for i, edge in enumerate(untrapped_edges):
+            if edge.is_trap_state:
+                pass
+            elif edge.is_inf_zero_acc and edge.is_terminal_state:
+                # If the edge has Inf(0) acceptance and is a terminal state,
+                # it is a goal state
+                goal_states.append(edge.state)
+            else:
+                is_trapped_in_all_trans = True
+                for j, transition in enumerate(edge.transitions):
+                    if transition.next_state in trap_states:
+                        if edge.is_inf_zero_acc:
+                            edge.transitions.pop(j)
+                            goal_states.append(edge.state)
                         else:
-                            is_trapped_in_all_trans = False
-
-                    if is_trapped_in_all_trans and edge.transitions:
-                        untrapped_edges[i].is_trap_state = True
-                        trap_states.append(edge.state)
+                            edge.transitions[j] = Transition(
+                                transition.condition, transition.next_state, True
+                            )
                     else:
-                        pass
+                        is_trapped_in_all_trans = False
+
+                if is_trapped_in_all_trans and edge.transitions:
+                    untrapped_edges[i].is_trap_state = True
+                    trap_states.append(edge.state)
+                else:
+                    pass
 
         self.goal_states: tuple[int, ...] = tuple(goal_states)
         self.trap_states: tuple[int, ...] = tuple(trap_states)
