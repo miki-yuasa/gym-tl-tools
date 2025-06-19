@@ -1,9 +1,11 @@
 from typing import Any, Callable, Generic, SupportsFloat, TypedDict
 
+import numpy as np
 from gymnasium import Env, ObservationWrapper
 from gymnasium.core import ActType, ObsType
 from gymnasium.spaces import Dict, Discrete, Tuple
 from gymnasium.utils import RecordConstructorArgs
+from numpy.typing import NDArray
 from pydantic import BaseModel
 
 from gym_tl_tools.automaton import Automaton, Predicate
@@ -46,7 +48,7 @@ class RewardConfig(BaseModel):
 
 
 class TLObservationReward(
-    ObservationWrapper[dict[str, ObsType | int | Any], ActType, ObsType],
+    ObservationWrapper[dict[str, ObsType | np.int64 | NDArray], ActType, ObsType],
     RecordConstructorArgs,
     Generic[ObsType, ActType],
 ):
@@ -233,7 +235,9 @@ class TLObservationReward(
 
         aut_state_space = Discrete(self.automaton.num_states)
 
-        self._append_data_func: Callable[[ObsType, int], dict[str, ObsType | int | Any]]
+        self._append_data_func: Callable[
+            [ObsType, int], dict[str, ObsType | np.int64 | NDArray]
+        ]
         # Find the observation space
         match type(env.observation_space):
             case Dict():
@@ -262,13 +266,15 @@ class TLObservationReward(
                 )
                 self._append_data_func = lambda obs, aut_state: {
                     "obs": obs,
-                    "aut_state": aut_state,
+                    "aut_state": np.int64(aut_state),
                 }
 
         self.observation_space = observation_space
         self._obs_postprocess_func = lambda obs: obs
 
-    def observation(self, observation: ObsType) -> dict[str, ObsType | int | Any]:
+    def observation(
+        self, observation: ObsType
+    ) -> dict[str, ObsType | np.int64 | NDArray]:
         """
         Process the observation to include the automaton state.
 
@@ -283,14 +289,14 @@ class TLObservationReward(
             The processed observation with the automaton state appended.
         """
         aut_state = self.automaton.current_state
-        new_obs: dict[str, ObsType | int | Any] = self._append_data_func(
+        new_obs: dict[str, ObsType | np.int64 | NDArray] = self._append_data_func(
             observation, aut_state
         )
         return new_obs
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
-    ) -> tuple[dict[str, ObsType | int | Any], dict[str, Any]]:
+    ) -> tuple[dict[str, ObsType | np.int64 | NDArray], dict[str, Any]]:
         """
         Reset the environment and return the initial observation.
 
@@ -320,7 +326,11 @@ class TLObservationReward(
     def step(
         self, action: ActType
     ) -> tuple[
-        dict[str, ObsType | int | Any], SupportsFloat, bool, bool, dict[str, Any]
+        dict[str, ObsType | np.int64 | NDArray],
+        SupportsFloat,
+        bool,
+        bool,
+        dict[str, Any],
     ]:
         """
         Take a step in the environment with the given action.
