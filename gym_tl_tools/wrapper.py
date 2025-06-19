@@ -1,4 +1,4 @@
-from typing import Any, Callable, Generic, SupportsFloat, TypedDict
+from typing import Any, Callable, Generic, SupportsFloat
 
 import numpy as np
 from gymnasium import Env, ObservationWrapper
@@ -7,6 +7,7 @@ from gymnasium.spaces import Dict, Discrete, Tuple
 from gymnasium.utils import RecordConstructorArgs
 from numpy.typing import NDArray
 from pydantic import BaseModel
+from typing_extensions import TypedDict
 
 from gym_tl_tools.automaton import Automaton, Predicate
 from gym_tl_tools.parser import Parser
@@ -48,7 +49,9 @@ class RewardConfig(BaseModel):
 
 
 class TLObservationReward(
-    ObservationWrapper[dict[str, ObsType | np.int64 | NDArray], ActType, ObsType],
+    ObservationWrapper[
+        dict[str, ObsType | np.int64 | NDArray[np.number]], ActType, ObsType
+    ],
     RecordConstructorArgs,
     Generic[ObsType, ActType],
 ):
