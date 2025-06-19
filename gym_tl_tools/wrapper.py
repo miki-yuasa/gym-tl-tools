@@ -1,7 +1,7 @@
-from typing import Any, Callable, SupportsFloat, TypedDict
+from typing import Any, Callable, Generic, SupportsFloat, TypedDict
 
 from gymnasium import Env, ObservationWrapper
-from gymnasium.core import ActType, ObsType, WrapperObsType
+from gymnasium.core import ActType, ObsType
 from gymnasium.spaces import Dict, Discrete, Tuple
 from gymnasium.utils import RecordConstructorArgs
 from pydantic import BaseModel
@@ -46,7 +46,9 @@ class RewardConfig(BaseModel):
 
 
 class TLObservationReward(
-    ObservationWrapper[WrapperObsType, ActType, ObsType], RecordConstructorArgs
+    ObservationWrapper[dict[str, ObsType | int | Any], ActType, ObsType],
+    RecordConstructorArgs,
+    Generic[ObsType, ActType],
 ):
     """
     A wrapper for Gymnasium environments that augments observations with the state of a temporal logic automaton,
@@ -98,7 +100,7 @@ class TLObservationReward(
     4. **Observation Structure**:
         - The wrapper augments each observation with the current automaton state.
         - If the original observation space is a [Dict](https://gymnasium.farama.org/main/api/spaces/composite/#gymnasium.spaces.Dict), the automaton state is added as a new key (default: `"aut_state"`).
-        - If the original observation space is a [Tuple](https://gymnasium.farama.org/main/api/spaces/composite/#gymnasium.spaces.Tuple), the automaton state is appended.
+        - ~~If the original observation space is a [Tuple](https://gymnasium.farama.org/main/api/spaces/composite/#gymnasium.spaces.Tuple), the automaton state is appended.~~
         - Otherwise, the observation is wrapped in a [Dict](https://gymnasium.farama.org/main/api/spaces/composite/#gymnasium.spaces.Dict) with keys `"obs"` and `"aut_state"`.
 
     5. **Reward Calculation**:
@@ -231,7 +233,7 @@ class TLObservationReward(
 
         aut_state_space = Discrete(self.automaton.num_states)
 
-        self._append_data_func: Callable[[ObsType, int], WrapperObsType]
+        self._append_data_func: Callable[[ObsType, int], dict[str, ObsType | int | Any]]
         # Find the observation space
         match type(env.observation_space):
             case Dict():
@@ -249,11 +251,11 @@ class TLObservationReward(
                     **obs,
                     dict_aut_state_key: aut_state,
                 }
-            case Tuple():
-                observation_space = Tuple(
-                    env.observation_space.spaces + (aut_state_space,)
-                )
-                self._append_data_func = lambda obs, aut_state: obs + (aut_state,)
+            # case Tuple():
+            #     observation_space = Tuple(
+            #         env.observation_space.spaces + (aut_state_space,)
+            #     )
+            #     self._append_data_func = lambda obs, aut_state: obs + (aut_state,)
             case _:
                 observation_space = Dict(
                     {"obs": env.observation_space, dict_aut_state_key: aut_state_space}
@@ -266,7 +268,7 @@ class TLObservationReward(
         self.observation_space = observation_space
         self._obs_postprocess_func = lambda obs: obs
 
-    def observation(self, observation: ObsType) -> WrapperObsType:
+    def observation(self, observation: ObsType) -> dict[str, ObsType | int | Any]:
         """
         Process the observation to include the automaton state.
 
@@ -277,16 +279,18 @@ class TLObservationReward(
 
         Returns
         -------
-        new_obs: WrapperObsType
+        new_obs: dict[str,ObsType|int]
             The processed observation with the automaton state appended.
         """
         aut_state = self.automaton.current_state
-        new_obs: WrapperObsType = self._append_data_func(observation, aut_state)
+        new_obs: dict[str, ObsType | int | Any] = self._append_data_func(
+            observation, aut_state
+        )
         return new_obs
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
-    ) -> tuple[WrapperObsType, dict[str, Any]]:
+    ) -> tuple[dict[str, ObsType | int | Any], dict[str, Any]]:
         """
         Reset the environment and return the initial observation.
 
@@ -299,7 +303,7 @@ class TLObservationReward(
 
         Returns
         -------
-        new_obs: WrapperObsType
+        new_obs: dict[str,ObsType|int]
             The initial observation with the automaton state.
         info: dict[str, Any]
             Additional information from the reset.
@@ -315,7 +319,9 @@ class TLObservationReward(
 
     def step(
         self, action: ActType
-    ) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    ) -> tuple[
+        dict[str, ObsType | int | Any], SupportsFloat, bool, bool, dict[str, Any]
+    ]:
         """
         Take a step in the environment with the given action.
 
@@ -326,7 +332,7 @@ class TLObservationReward(
 
         Returns
         -------
-        new_obs: WrapperObsType
+        new_obs: dict[str,ObsType|int]
             The new observation after taking the action.
         reward: SupportsFloat
             The reward received from the environment.
