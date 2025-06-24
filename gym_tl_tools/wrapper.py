@@ -365,6 +365,7 @@ class TLObservationReward(
         reward, next_aut_state = self.automaton.step(
             info, **self.reward_config.model_dump()
         )
+        is_aut_terminated: bool = False
         if (
             self.early_termination
             and next_aut_state
@@ -372,18 +373,13 @@ class TLObservationReward(
         ):
             terminated = True
 
-        if next_aut_state in self.automaton.goal_states:
-            info.update(
-                {
-                    "is_success": True,
-                }
-            )
-        else:
-            info.update(
-                {
-                    "is_success": False,
-                }
-            )
+        info.update(
+            {
+                "is_success": next_aut_state in self.automaton.goal_states,
+                "is_aut_terminated": next_aut_state
+                in self.automaton.goal_states + self.automaton.trap_states,
+            }
+        )
 
         new_obs = self.observation(obs)
         return new_obs, reward, terminated, truncated, info
