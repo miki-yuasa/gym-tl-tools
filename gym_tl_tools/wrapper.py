@@ -365,7 +365,7 @@ class TLObservationReward(
         reward, next_aut_state = self.automaton.step(
             info, **self.reward_config.model_dump()
         )
-        is_aut_terminated: bool = False
+
         if (
             self.early_termination
             and next_aut_state
