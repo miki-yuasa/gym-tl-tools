@@ -219,6 +219,14 @@ class TLObservationReward(
             The key under which the automaton state will be stored in the observation space.
             Defaults to "aut_state".
         """
+
+        match tl_spec:
+            case "0" | "1" | "":
+                raise ValueError(
+                    f"The temporal logic specification cannot be '0', '1', or an empty string (given tl_spec={tl_spec}). "
+                    "Please provide a valid temporal logic formula."
+                )
+
         RecordConstructorArgs.__init__(
             self,
             tl_spec=tl_spec,
@@ -298,7 +306,14 @@ class TLObservationReward(
         return new_obs
 
     def reset(
-        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = {
+            "forward_aut_on_reset": True,
+            "obs": {},
+            "info": {},
+        },
     ) -> tuple[dict[str, ObsType | np.int64 | NDArray], dict[str, Any]]:
         """
         Reset the environment and return the initial observation.
@@ -319,12 +334,66 @@ class TLObservationReward(
             Should contain the variable keys and values that define the atomic predicates.
         """
         obs, info = self.env.reset(seed=seed, options=options)
-        info_updates = self.var_value_info_generator(self.env, obs, info)
         # Update the info dict with the variable values
-        info.update(info_updates)
+        info = self._var_value_info_update(obs, info)
         self.automaton.reset(seed=seed)
+
+        if options:
+            if options.get("forward_aut_on_reset", True):
+                obs = options["obs"] if options.get("obs", {}) else obs
+                info = options["info"] if options.get("info", {}) else info
+                self.forward_aut(obs, info)
+
         new_obs = self.observation(obs)
         return new_obs, info
+
+    def forward_aut(self, obs: ObsType, info: dict[str, Any]) -> None:
+        """
+        Forward the automaton based on the current observation and info.
+
+        This method updates the automaton state based on the current observation and info.
+        It is useful for manually stepping the automaton without taking an action in the environment.
+
+        Parameters
+        ----------
+        obs : ObsType
+            The current observation from the environment.
+        info : dict[str, Any]
+            The info dictionary containing variable values for the atomic predicates.
+        """
+        curr_state: int = self.automaton.current_state
+        new_state: int | None = None
+        # Update the automaton state based on the info
+        info = self._var_value_info_update(obs, info)
+        while new_state != curr_state:
+            curr_state = self.automaton.current_state
+            _, new_state = self.automaton.step(info, **self.reward_config.model_dump())
+
+    def _var_value_info_update(
+        self, obs: ObsType, info: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Update the info dictionary with variable values based on the observation.
+
+        This method is used to update the info dictionary with the values of the atomic predicates
+        based on the current observation. It is called during the step and reset methods.
+
+        Parameters
+        ----------
+        obs : ObsType
+            The current observation from the environment.
+        info : dict[str, Any]
+            The info dictionary to be updated with variable values.
+
+        Returns
+        -------
+        info : dict[str, Any]
+            The updated info dictionary containing the variable keys and values that define the atomic predicates.
+        """
+        info_updates = self.var_value_info_generator(self.env, obs, info)
+        info.update(info_updates)
+
+        return info
 
     def step(
         self, action: ActType
@@ -358,9 +427,7 @@ class TLObservationReward(
             Should contain the variable keys and values that define the atomic predicates.
         """
         obs, orig_reward, terminated, truncated, info = self.env.step(action)
-        info_updates = self.var_value_info_generator(self.env, obs, info)
-        # Update the info dict with the variable values
-        info.update(info_updates)
+        info = self._var_value_info_update(obs, info)
         info.update({"original_reward": orig_reward})
         reward, next_aut_state = self.automaton.step(
             info, **self.reward_config.model_dump()

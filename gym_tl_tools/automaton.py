@@ -264,8 +264,8 @@ class Automaton:
         -------
         reward : float
             The reward for the current step.
-        next_state : int
-            The next automaton state.
+        new_state : int
+            The new automaton state.
         """
 
         if not hasattr(self, "current_state"):
@@ -278,7 +278,7 @@ class Automaton:
             for atom_pred in self.atomic_predicates
         }
 
-        reward, next_state = self.tl_reward(
+        reward, new_state = self.tl_reward(
             ap_rob_dict,
             self.current_state,
             terminal_state_reward=terminal_state_reward,
@@ -288,17 +288,17 @@ class Automaton:
         )
 
         # Update the current state of the automaton
-        self.current_state = next_state
+        self.current_state = new_state
 
         # Update the status of the automaton
-        if next_state in self.goal_states:
+        if new_state in self.goal_states:
             self.status = "goal"
-        elif next_state in self.trap_states:
+        elif new_state in self.trap_states:
             self.status = "trap"
         else:
             self.status = "intermediate"
 
-        return reward, next_state
+        return reward, new_state
 
     def tl_reward(
         self,
