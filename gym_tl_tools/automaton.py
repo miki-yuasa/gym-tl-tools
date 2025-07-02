@@ -508,6 +508,39 @@ class Automaton:
             non_trap_rob_trans_pairs,
         )
 
+    @property
+    def is_goaled(self) -> bool:
+        """
+        Check if the current state of the automaton is a goal state.
+        Returns
+        -------
+        bool
+            True if the current state is a goal state, False otherwise.
+        """
+        return self.status == "goal"
+
+    @property
+    def is_trapped(self) -> bool:
+        """
+        Check if the current state of the automaton is a trap state.
+        Returns
+        -------
+        bool
+            True if the current state is a trap state, False otherwise.
+        """
+        return self.status == "trap"
+
+    @property
+    def is_terminated(self) -> bool:
+        """
+        Check if the automaton is in a terminal state (goal or trap).
+        Returns
+        -------
+        bool
+            True if the automaton is in a terminal state, False otherwise.
+        """
+        return self.is_goaled or self.is_trapped
+
 
 def add_or_parentheses(condition: str) -> str:
     or_locs: list[int] = [m.start() for m in re.finditer("\|", condition)]

@@ -368,6 +368,21 @@ class TLObservationReward(
         while new_state != curr_state:
             curr_state = self.automaton.current_state
             _, new_state = self.automaton.step(info, **self.reward_config.model_dump())
+        # Update the automaton state
+        if new_state is not None:
+            self.automaton.current_state = new_state
+
+    @property
+    def is_aut_terminated(self) -> bool:
+        """
+        Check if the automaton is in a terminal state.
+
+        Returns
+        -------
+        bool
+            True if the automaton is in a terminal state, False otherwise.
+        """
+        return self.automaton.is_terminated
 
     def _var_value_info_update(
         self, obs: ObsType, info: dict[str, Any]
