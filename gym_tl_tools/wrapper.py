@@ -7,7 +7,7 @@ from gymnasium.core import ActType, ObsType
 from gymnasium.spaces import Dict, Discrete
 from gymnasium.utils import RecordConstructorArgs
 from numpy.typing import NDArray
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SerializationInfo, field_serializer
 from typing_extensions import TypedDict
 
 from gym_tl_tools.automaton import Automaton, Predicate
@@ -136,6 +136,16 @@ class TLObservationRewardConfig(BaseModel, Generic[ObsType, ActType]):
     dict_aut_state_key: str = "aut_state"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_serializer("atomic_predicates")
+    def serialize_atomic_predicates(
+        self, value: list[Predicate], info: SerializationInfo
+    ) -> list[Predicate] | list[dict[str, str]]:
+        # If the serialization info requests dicts, return a list of dicts
+        context = info.context
+        if context and "atomic_predicates" in context.get("excluded", []):
+            return value
+        return [pred.model_dump() for pred in value]
 
 
 class TLObservationReward(
