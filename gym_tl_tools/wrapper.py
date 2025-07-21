@@ -7,7 +7,7 @@ from gymnasium.core import ActType, ObsType
 from gymnasium.spaces import Dict, Discrete
 from gymnasium.utils import RecordConstructorArgs
 from numpy.typing import NDArray
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing_extensions import TypedDict
 
 from gym_tl_tools.automaton import Automaton, Predicate
@@ -99,6 +99,43 @@ class BaseVarValueInfoGenerator(Generic[ObsType, ActType], ABC):
             and values are their corresponding numerical values.
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
+
+
+class TLObservationRewardWrapperConfig(BaseModel, Generic[ObsType, ActType]):
+    """
+    Configuration for the TLObservationReward wrapper.
+
+    This class defines the parameters used to configure the TLObservationReward wrapper,
+    including the temporal logic specification, atomic predicates, variable value generator,
+    reward configuration, and other settings.
+
+    Attributes
+    ----------
+    tl_spec : str
+        The temporal logic specification (e.g., LTL formula) to be used for the automaton.
+    atomic_predicates : list[Predicate]
+        List of atomic predicates used in the TL formula.
+    var_value_info_generator : BaseVarValueInfoGenerator[ObsType, ActType]
+        An instance of a subclass of BaseVarValueInfoGenerator that extracts variable values from the environment's observation and info.
+    reward_config : RewardConfigDict
+        Configuration for the reward structure.
+    early_termination : bool
+        Whether to terminate episodes when automaton reaches terminal states.
+    parser : Parser
+        Parser for TL expressions.
+    dict_aut_state_key : str
+        Key for the automaton state in the observation dictionary.
+    """
+
+    tl_spec: str
+    atomic_predicates: list[Predicate]
+    var_value_info_generator: BaseVarValueInfoGenerator[ObsType, ActType] | None = None
+    reward_config: RewardConfig = RewardConfig()
+    early_termination: bool = True
+    parser: Parser = Parser()
+    dict_aut_state_key: str = "aut_state"
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class TLObservationReward(
