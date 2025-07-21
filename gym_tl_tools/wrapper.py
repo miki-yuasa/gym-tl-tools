@@ -127,7 +127,7 @@ class TLObservationRewardWrapperConfig(BaseModel, Generic[ObsType, ActType]):
         Key for the automaton state in the observation dictionary.
     """
 
-    tl_spec: str
+    tl_spec: str = ""
     atomic_predicates: list[Predicate]
     var_value_info_generator: BaseVarValueInfoGenerator[ObsType, ActType] | None = None
     reward_config: RewardConfig = RewardConfig()
