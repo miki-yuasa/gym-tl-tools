@@ -24,32 +24,60 @@ pip install -e .
 ## Usage
 
 ### 1. Define Atomic Predicates
-Create a list of `Predicate` objects, each representing an atomic proposition in your TL formula. Make sure that your environment's `info` dictionary contains the necessary variables to evaluate these predicates.
+Create a list of `Predicate` objects, each representing an atomic proposition in your TL formula. Each predicate has a `name` (used in the TL formula) and a `formula` (Boolean expression string for evaluation).
 
 ```python
 from gym_tl_tools import Predicate
 
 atomic_predicates = [
-    Predicate("goal_reached", "d_robot_goal < 1.0"),
-    Predicate("obstacle_hit", "d_robot_obstacle < 1.0"),
+    Predicate(name="goal_reached", formula="d_robot_goal < 1.0"),
+    Predicate(name="obstacle_hit", formula="d_robot_obstacle < 1.0"),
 ]
-
-# Ensure that the environment's info dictionary contains these variables.
-# For example, info might look like: {"d_robot_goal": 3.0, "d_robot_obstacle": 1.0}
-_, info = your_env.reset()
-print(info)
-# Output: {'d_robot_goal': 3.0, 'd_robot_obstacle': 1.0}
 ```
 
-### 2. Specify the Temporal Logic Formula
+### 2. Create a Variable Value Generator
+Implement a subclass of `BaseVarValueInfoGenerator` to extract variable values from the environment's observation and info for evaluating the atomic predicates.
+
+```python
+from gym_tl_tools import BaseVarValueInfoGenerator
+
+class MyVarValueGenerator(BaseVarValueInfoGenerator):
+    def get_var_values(self, env, obs, info):
+        # Extract variables needed for predicate evaluation
+        return {
+            "d_robot_goal": info.get("d_robot_goal", float('inf')),
+            "d_robot_obstacle": info.get("d_robot_obstacle", float('inf')),
+        }
+
+var_generator = MyVarValueGenerator()
+```
+
+### 2. Create a Variable Value Generator
+Implement a subclass of `BaseVarValueInfoGenerator` to extract variable values from the environment's observation and info for evaluating the atomic predicates.
+
+```python
+from gym_tl_tools import BaseVarValueInfoGenerator
+
+class MyVarValueGenerator(BaseVarValueInfoGenerator):
+    def get_var_values(self, env, obs, info):
+        # Extract variables needed for predicate evaluation
+        return {
+            "d_robot_goal": info.get("d_robot_goal", float('inf')),
+            "d_robot_obstacle": info.get("d_robot_obstacle", float('inf')),
+        }
+
+var_generator = MyVarValueGenerator()
+```
+
+### 3. Specify the Temporal Logic Formula
 Write your TL specification as a string, using the names of your atomic predicates.
 
 ```python
 tl_spec = "F(goal_reached) & G(!obstacle_hit)"
 ```
 
-### 3. Wrap Your Environment
-Pass your environment, TL specification, and atomic predicates to `TLObservationReward`:
+### 4. Wrap Your Environment
+Pass your environment, TL specification, atomic predicates, and variable value generator to `TLObservationReward`:
 
 ```python
 from gym_tl_tools import TLObservationReward
@@ -58,19 +86,20 @@ wrapped_env = TLObservationReward(
     env,
     tl_spec=tl_spec,
     atomic_predicates=atomic_predicates,
+    var_value_info_generator=var_generator,
 )
 ```
 
-### 4. Observation Structure
+### 5. Observation Structure
 - If the original observation space is a `Dict`, the automaton state is added as a new key (default: `"aut_state"`).
 - If the original observation space is a `Tuple`, the automaton state is appended.
 - Otherwise, the observation is wrapped in a `Dict` with keys `"obs"` and `"aut_state"`.
 
-### 5. Reward Calculation
-At each step, the wrapper computes the reward based on the automaton's transition, reflecting progress toward (or violation of) the TL specification. The automaton state is updated according to the values of the atomic predicates, which are expected to be present in the `info` dictionary returned by the environment.
+### 6. Reward Calculation
+At each step, the wrapper computes the reward based on the automaton's transition, reflecting progress toward (or violation of) the TL specification. The automaton state is updated according to the values of the atomic predicates, which are evaluated using the variable values provided by the `var_value_info_generator`.
 
-### 6. Reset and Step
-On `reset()`, the automaton is reset to its initial state, and the initial observation is augmented. On `step(action)`, the automaton transitions based on the environment's `info`, and the reward is computed accordingly.
+### 7. Reset and Step
+On `reset()`, the automaton is reset to its initial state, and the initial observation is augmented. On `step(action)`, the automaton transitions based on the variable values extracted by the `var_value_info_generator`, and the reward is computed accordingly.
 
 ```python
 obs, info = wrapped_env.reset()
@@ -85,13 +114,23 @@ while not done:
 ```python
 import gymnasium as gym
 
-from gym_tl_tools import Predicate
-from gym_tl_tools import TLObservationReward
+from gym_tl_tools import Predicate, BaseVarValueInfoGenerator, TLObservationReward
 
+# Define atomic predicates
 atomic_predicates = [
-    Predicate("goal_reached", "d_robot_goal < 1.0"),
-    Predicate("obstacle_hit", "d_robot_obstacle < 1.0"),
+    Predicate(name="goal_reached", formula="d_robot_goal < 1.0"),
+    Predicate(name="obstacle_hit", formula="d_robot_obstacle < 1.0"),
 ]
+
+# Create variable value generator
+class MyVarValueGenerator(BaseVarValueInfoGenerator):
+    def get_var_values(self, env, obs, info):
+        return {
+            "d_robot_goal": info.get("d_robot_goal", float('inf')),
+            "d_robot_obstacle": info.get("d_robot_obstacle", float('inf')),
+        }
+
+var_generator = MyVarValueGenerator()
 tl_spec = "F(goal_reached) & G(!obstacle_hit)"
 
 # Ensure that the environment's info dictionary contains these variables.
@@ -105,6 +144,7 @@ wrapped_env = TLObservationReward(
     env,
     tl_spec=tl_spec,
     atomic_predicates=atomic_predicates,
+    var_value_info_generator=var_generator,
 )
 
 obs, info = wrapped_env.reset()
