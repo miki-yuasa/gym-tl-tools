@@ -101,7 +101,7 @@ class BaseVarValueInfoGenerator(Generic[ObsType, ActType], ABC):
         raise NotImplementedError("This method should be implemented by subclasses.")
 
 
-class TLObservationRewardWrapperConfig(BaseModel, Generic[ObsType, ActType]):
+class TLObservationRewardConfig(BaseModel, Generic[ObsType, ActType]):
     """
     Configuration for the TLObservationReward wrapper.
 

@@ -4,7 +4,7 @@ from gym_tl_tools.wrapper import (
     RewardConfig,
     RewardConfigDict,
     TLObservationReward,
-    TLObservationRewardWrapperConfig,
+    TLObservationRewardConfig,
 )
 
 __all__ = [
@@ -16,5 +16,5 @@ __all__ = [
     "RewardConfig",
     "RewardConfigDict",
     "TLObservationReward",
-    "TLObservationRewardWrapperConfig",
+    "TLObservationRewardConfig",
 ]
