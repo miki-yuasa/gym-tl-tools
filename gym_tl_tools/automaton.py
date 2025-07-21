@@ -1,14 +1,15 @@
 import re
-from typing import Literal, NamedTuple
+from typing import Literal
 
 import numpy as np
 import spot
+from pydantic import BaseModel, Field
 from spot import twa as Twa
 
 from gym_tl_tools.parser import Parser
 
 
-class Transition(NamedTuple):
+class Transition(BaseModel):
     """
     Represents a transition in a finite state automaton from a LTL formula.
 
@@ -29,7 +30,7 @@ class Transition(NamedTuple):
     is_trapped_next: bool = False
 
 
-class Predicate(NamedTuple):
+class Predicate(BaseModel):
     """
     Represents a predicate in a TL formula.
 
@@ -47,7 +48,7 @@ class Predicate(NamedTuple):
     formula: str
 
 
-class RobNextStatePair(NamedTuple):
+class RobNextStatePair(BaseModel):
     """
     Represents a pair of robustness value and transition.
 
@@ -63,12 +64,12 @@ class RobNextStatePair(NamedTuple):
     next_state: int
 
 
-class RobustnessCounter(NamedTuple):
+class RobustnessCounter(BaseModel):
     robustness: float
     ind: int
 
 
-class AutomatonStateCounter(NamedTuple):
+class AutomatonStateCounter(BaseModel):
     state: int
     ind: int
 
@@ -102,11 +103,11 @@ class Edge:
         self.state: int = int(*re.findall("State: (\d).*\[", raw_state))
         self.transitions: list[Transition] = [
             Transition(
-                replace_atomic_pred_ids_to_names(
+                condition=replace_atomic_pred_ids_to_names(
                     add_or_parentheses(re.findall("\[(.*)\]", transition)[0]),
                     atomic_pred_names,
                 ),
-                int(*re.findall("\[.*\] (\d)", transition)),
+                next_state=int(*re.findall("\[.*\] (\d)", transition)),
             )
             for transition in re.findall(
                 "(\[.*\] \d+)\n", raw_state.replace("[", "\n[")
@@ -214,7 +215,9 @@ class Automaton:
                             goal_states.append(edge.state)
                         else:
                             edge.transitions[j] = Transition(
-                                transition.condition, transition.next_state, True
+                                condition=transition.condition,
+                                next_state=transition.next_state,
+                                is_trapped_next=True,
                             )
                     else:
                         is_trapped_in_all_trans = False
@@ -351,23 +354,28 @@ class Automaton:
             next_aut_state: int
             if len(pos_trap_rob_trans_pairs) == 1:
                 # If there is only one positive transition robustness leading to a trap state
-                trans_rob, next_aut_state = pos_trap_rob_trans_pairs[0]
+                trans_rob = pos_non_trap_rob_trans_pairs[0].robustness
+                next_aut_state = pos_non_trap_rob_trans_pairs[0].next_state
             elif len(pos_non_trap_rob_trans_pairs) == 1:
                 # If there is only one positive transition robustness leading to a non-trap state
-                trans_rob, next_aut_state = pos_non_trap_rob_trans_pairs[0]
+                trans_rob = pos_non_trap_rob_trans_pairs[0].robustness
+                next_aut_state = pos_non_trap_rob_trans_pairs[0].next_state
             elif zero_trap_rob_trans_pairs:
                 # If there are no positive transition robustnesses, but there are zero transition robustnesses
                 # leading to a trap state, select the first one
-                trans_rob, next_aut_state = zero_trap_rob_trans_pairs[0]
+                trans_rob = zero_trap_rob_trans_pairs[0].robustness
+                next_aut_state = zero_trap_rob_trans_pairs[0].next_state
             elif zero_non_trap_rob_trans_pairs:
                 # If there are no positive transition robustnesses, but there are zero transition robustnesses
                 # leading to a non-trap state, select the first one
                 selected_index: int = int(
                     self._np_rng.integers(0, len(zero_non_trap_rob_trans_pairs))
                 )
-                trans_rob, next_aut_state = zero_non_trap_rob_trans_pairs[
+                trans_rob = zero_non_trap_rob_trans_pairs[selected_index].robustness
+                next_aut_state = zero_non_trap_rob_trans_pairs[
                     selected_index
-                ]
+                ].next_state
+
             else:
                 raise ValueError(
                     "Error: No singular positive or zero transition robustnesses found for the current automaton state.",
@@ -473,30 +481,30 @@ class Automaton:
             match (rob, trans.is_trapped_next):
                 case (0, True):
                     zero_trap_rob_trans_pairs.append(
-                        RobNextStatePair(rob, trans.next_state)
+                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
                     )
                 case (0, False):
                     zero_non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(rob, trans.next_state)
+                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
                     )
                     non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(rob, trans.next_state)
+                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
                     )
 
                 case (rob, True) if rob > 0:
                     pos_trap_rob_trans_pairs.append(
-                        RobNextStatePair(rob, trans.next_state)
+                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
                     )
                 case (rob, False) if rob > 0:
                     pos_non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(rob, trans.next_state)
+                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
                     )
                     non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(rob, trans.next_state)
+                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
                     )
                 case (rob, False) if rob < 0:
                     non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(rob, trans.next_state)
+                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
                     )
                 case _:
                     pass

@@ -8,32 +8,44 @@ from gym_tl_tools.automaton import Automaton, Predicate
     [
         (
             "F(psi_a)",
-            [Predicate("psi_a", "d_a < 0.5")],
+            [Predicate(name="psi_a", formula="d_a < 0.5")],
             [False, False],
         ),
         (
             "F(psi_a & psi_b)",
-            [Predicate("psi_a", "d_a < 0.5"), Predicate("psi_b", "d_b < 0.5")],
+            [
+                Predicate(name="psi_a", formula="d_a < 0.5"),
+                Predicate(name="psi_b", formula="d_b < 0.5"),
+            ],
             [False, False],
         ),
         (
             "F(psi_a | psi_b)",
-            [Predicate("psi_a", "d_a < 0.5"), Predicate("psi_b", "d_b < 0.5")],
+            [
+                Predicate(name="psi_a", formula="d_a < 0.5"),
+                Predicate(name="psi_b", formula="d_b < 0.5"),
+            ],
             [False, False],
         ),
         (
             "F(psi_a & !psi_b)",
-            [Predicate("psi_a", "d_a < 0.5"), Predicate("psi_b", "d_b < 0.5")],
+            [
+                Predicate(name="psi_a", formula="d_a < 0.5"),
+                Predicate(name="psi_b", formula="d_b < 0.5"),
+            ],
             [False, False],
         ),
         (
             "G(psi_a)",
-            [Predicate("psi_a", "d_a < 0.5")],
+            [Predicate(name="psi_a", formula="d_a < 0.5")],
             [False, True],
         ),
         (
             "F(psi_a) & G(psi_b)",
-            [Predicate("psi_a", "d_a < 0.5"), Predicate("psi_b", "d_b < 0.5")],
+            [
+                Predicate(name="psi_a", formula="d_a < 0.5"),
+                Predicate(name="psi_b", formula="d_b < 0.5"),
+            ],
             [False, False, True],
         ),
     ],

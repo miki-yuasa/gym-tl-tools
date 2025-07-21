@@ -1,11 +1,12 @@
 import re
 from collections import deque
-from typing import Any, Callable, NamedTuple, Pattern, cast
+from typing import Any, Callable, Pattern, cast
 
 import numpy as np
+from pydantic import BaseModel
 
 
-class ParserSymbol(NamedTuple):
+class ParserSymbol(BaseModel):
     """
     Represents a symbol in the parser with its priority and function.
 
@@ -29,15 +30,19 @@ class Parser:
         self.parentheses: list[str] = ["(", ")"]
 
         self.symbols: dict[str, ParserSymbol] = {
-            "!": ParserSymbol(3, lambda x: -x),
-            "|": ParserSymbol(1, lambda x, y: np.maximum(x, y)),
-            "&": ParserSymbol(2, lambda x, y: np.minimum(x, y)),
-            "<": ParserSymbol(3, lambda x, y: y - x),
-            ">": ParserSymbol(3, lambda x, y: x - y),
-            "->": ParserSymbol(3, lambda x, y: np.maximum(-x, y)),
-            "<-": ParserSymbol(3, lambda x, y: np.minimum(x, -y)),
-            "F": ParserSymbol(4, lambda x: np.max(x, axis=len(x.shape) - 1)),
-            "G": ParserSymbol(4, lambda x: np.min(x, axis=len(x.shape) - 1)),
+            "!": ParserSymbol(priority=3, func=lambda x: -x),
+            "|": ParserSymbol(priority=1, func=lambda x, y: np.maximum(x, y)),
+            "&": ParserSymbol(priority=2, func=lambda x, y: np.minimum(x, y)),
+            "<": ParserSymbol(priority=3, func=lambda x, y: y - x),
+            ">": ParserSymbol(priority=3, func=lambda x, y: x - y),
+            "->": ParserSymbol(priority=3, func=lambda x, y: np.maximum(-x, y)),
+            "<-": ParserSymbol(priority=3, func=lambda x, y: np.minimum(x, -y)),
+            "F": ParserSymbol(
+                priority=4, func=lambda x: np.max(x, axis=len(x.shape) - 1)
+            ),
+            "G": ParserSymbol(
+                priority=4, func=lambda x: np.min(x, axis=len(x.shape) - 1)
+            ),
         }
 
     # Check if a token is a parenthesis
