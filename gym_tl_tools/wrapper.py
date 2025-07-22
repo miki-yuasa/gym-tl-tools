@@ -314,7 +314,7 @@ class TLObservationReward(
         self,
         env: Env[ObsType, ActType],
         tl_spec: str,
-        atomic_predicates: list[Predicate],
+        atomic_predicates: list[Predicate] | list[dict[str, str]],
         var_value_info_generator: BaseVarValueInfoGenerator[ObsType, ActType],
         reward_config: RewardConfigDict = {
             "terminal_state_reward": 5,
@@ -396,11 +396,23 @@ class TLObservationReward(
             var_value_info_generator=var_value_info_generator,
         )
         ObservationWrapper.__init__(self, env)
+
+        predicates: list[Predicate] = []
+        for pred in atomic_predicates:
+            if isinstance(pred, dict):
+                predicates.append(Predicate(**pred))
+            elif isinstance(pred, Predicate):
+                predicates.append(pred)
+            else:
+                raise TypeError(
+                    f"Expected atomic_predicates to be a list of Predicate or dict, got {type(pred)}."
+                )
+
         self.var_value_info_generator: BaseVarValueInfoGenerator[ObsType, ActType] = (
             var_value_info_generator
         )
         self.parser = Parser()
-        self.automaton = Automaton(tl_spec, atomic_predicates, parser=parser)
+        self.automaton = Automaton(tl_spec, predicates, parser=parser)
         self.reward_config = RewardConfig(**reward_config)
         self.early_termination: bool = early_termination
 
