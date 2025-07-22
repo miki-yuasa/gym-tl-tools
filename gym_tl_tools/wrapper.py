@@ -147,16 +147,16 @@ class TLObservationRewardConfig(BaseModel, Generic[ObsType, ActType]):
         """Custom model serializer to handle atomic_predicates serialization with context."""
         # Handle atomic_predicates based on context
         atomic_predicates_data = self.atomic_predicates
-        if info and info.context:
-            excluded = info.context.get("excluded", [])
-            if "atomic_predicates" not in excluded:
-                atomic_predicates_data = [
-                    pred.model_dump() for pred in self.atomic_predicates
-                ]
-        else:
-            atomic_predicates_data = [
-                pred.model_dump() for pred in self.atomic_predicates
-            ]
+        # if info and info.context:
+        #     excluded = info.context.get("excluded", [])
+        #     if "atomic_predicates" not in excluded:
+        #         atomic_predicates_data = [
+        #             pred.model_dump() for pred in self.atomic_predicates
+        #         ]
+        # else:
+        #     atomic_predicates_data = [
+        #         pred.model_dump() for pred in self.atomic_predicates
+        #     ]
 
         data = {
             "tl_spec": self.tl_spec,
