@@ -388,7 +388,7 @@ class TLObservationReward(
             [ObsType, int], dict[str, ObsType | np.int64 | NDArray]
         ]
         # Find the observation space
-        match type(env.observation_space):
+        match env.observation_space:
             case Dict():
                 assert dict_aut_state_key not in env.observation_space.spaces, (
                     f"Key '{dict_aut_state_key}' already exists in the observation space. "
