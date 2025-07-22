@@ -354,8 +354,8 @@ class Automaton:
             next_aut_state: int
             if len(pos_trap_rob_trans_pairs) == 1:
                 # If there is only one positive transition robustness leading to a trap state
-                trans_rob = pos_non_trap_rob_trans_pairs[0].robustness
-                next_aut_state = pos_non_trap_rob_trans_pairs[0].next_state
+                trans_rob = pos_trap_rob_trans_pairs[0].robustness
+                next_aut_state = pos_trap_rob_trans_pairs[0].next_state
             elif len(pos_non_trap_rob_trans_pairs) == 1:
                 # If there is only one positive transition robustness leading to a non-trap state
                 trans_rob = pos_non_trap_rob_trans_pairs[0].robustness
