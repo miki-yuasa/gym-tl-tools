@@ -7,7 +7,12 @@ from gymnasium.core import ActType, ObsType
 from gymnasium.spaces import Dict, Discrete
 from gymnasium.utils import RecordConstructorArgs
 from numpy.typing import NDArray
-from pydantic import BaseModel, ConfigDict, SerializationInfo, field_serializer
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    SerializationInfo,
+    model_serializer,
+)
 from typing_extensions import TypedDict
 
 from gym_tl_tools.automaton import Automaton, Predicate
@@ -137,15 +142,32 @@ class TLObservationRewardConfig(BaseModel, Generic[ObsType, ActType]):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @field_serializer("atomic_predicates")
-    def serialize_atomic_predicates(
-        self, value: list[Predicate], info: SerializationInfo
-    ) -> list[Predicate] | list[dict[str, str]]:
-        # If the serialization info requests dicts, return a list of dicts
-        context = info.context
-        if context and "atomic_predicates" in context.get("excluded", []):
-            return value
-        return [pred.model_dump() for pred in value]
+    @model_serializer
+    def serialize_model(self, info: SerializationInfo | None = None) -> dict[str, Any]:
+        """Custom model serializer to handle atomic_predicates serialization with context."""
+        # Handle atomic_predicates based on context
+        atomic_predicates_data = self.atomic_predicates
+        if info and info.context:
+            excluded = info.context.get("excluded", [])
+            if "atomic_predicates" not in excluded:
+                atomic_predicates_data = [
+                    pred.model_dump() for pred in self.atomic_predicates
+                ]
+        else:
+            atomic_predicates_data = [
+                pred.model_dump() for pred in self.atomic_predicates
+            ]
+
+        data = {
+            "tl_spec": self.tl_spec,
+            "atomic_predicates": atomic_predicates_data,
+            "var_value_info_generator": self.var_value_info_generator,
+            "reward_config": self.reward_config,
+            "early_termination": self.early_termination,
+            "parser": self.parser,
+            "dict_aut_state_key": self.dict_aut_state_key,
+        }
+        return data
 
 
 class TLObservationReward(
