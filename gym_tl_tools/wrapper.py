@@ -515,7 +515,7 @@ class TLObservationReward(
                 obs = options["obs"] if options.get("obs", {}) else obs
                 info = options["info"] if options.get("info", {}) else info
                 self.forward_aut(obs, info)
-
+        info = self._success_info_update(info)
         new_obs = self.observation(obs)
         return new_obs, info
 
@@ -582,6 +582,32 @@ class TLObservationReward(
 
         return info
 
+    def _success_info_update(self, info: dict[str, Any]) -> dict[str, Any]:
+        """
+        Update the info dictionary with success information.
+
+        This method updates the info dictionary to include whether the automaton has reached a goal state
+        or has been terminated due to reaching a trap state.
+
+        Parameters
+        ----------
+        info : dict[str, Any]
+            The info dictionary to be updated.
+
+        Returns
+        -------
+        info : dict[str, Any]
+            The updated info dictionary with success information.
+        """
+        info.update(
+            {
+                "is_success": self.automaton.current_state
+                in self.automaton.goal_states,
+                "is_aut_terminated": self.automaton.is_terminated,
+            }
+        )
+        return info
+
     def step(
         self, action: ActType
     ) -> tuple[
@@ -627,13 +653,7 @@ class TLObservationReward(
         ):
             terminated = True
 
-        info.update(
-            {
-                "is_success": next_aut_state in self.automaton.goal_states,
-                "is_aut_terminated": next_aut_state
-                in self.automaton.goal_states + self.automaton.trap_states,
-            }
-        )
+        info = self._success_info_update(info)
 
         new_obs = self.observation(obs)
         return new_obs, reward, terminated, truncated, info
