@@ -1,3 +1,4 @@
+import importlib
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Generic, SupportsFloat
 
@@ -11,6 +12,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     SerializationInfo,
+    computed_field,
     model_serializer,
 )
 from typing_extensions import TypedDict
@@ -134,13 +136,37 @@ class TLObservationRewardConfig(BaseModel, Generic[ObsType, ActType]):
 
     tl_spec: str = ""
     atomic_predicates: list[Predicate]
-    var_value_info_generator: BaseVarValueInfoGenerator[ObsType, ActType] | None = None
+    var_value_info_generator_cls: (
+        type[BaseVarValueInfoGenerator[ObsType, ActType]] | str
+    )
+    var_value_info_generator_args: dict[str, Any] = {}
     reward_config: RewardConfig = RewardConfig()
     early_termination: bool = True
     parser: Parser = Parser()
     dict_aut_state_key: str = "aut_state"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @computed_field
+    @property
+    def var_value_info_generator(self) -> BaseVarValueInfoGenerator[ObsType, ActType]:
+        """
+        Instantiate the variable value info generator based on the provided class and arguments.
+
+        Returns
+        -------
+        BaseVarValueInfoGenerator[ObsType, ActType]
+            An instance of the variable value info generator.
+        """
+        if isinstance(self.var_value_info_generator_cls, str):
+            # If it's a string, assume it's a class name and import it dynamically
+            module_name, class_name = self.var_value_info_generator_cls.rsplit(".", 1)
+            module = importlib.import_module(module_name)
+            generator_cls = getattr(module, class_name)
+        else:
+            generator_cls = self.var_value_info_generator_cls
+
+        return generator_cls(**self.var_value_info_generator_args)
 
     @model_serializer
     def serialize_model(self, info: SerializationInfo | None = None) -> dict[str, Any]:
