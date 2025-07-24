@@ -136,9 +136,7 @@ class TLObservationRewardConfig(BaseModel, Generic[ObsType, ActType]):
 
     tl_spec: str = ""
     atomic_predicates: list[Predicate]
-    var_value_info_generator_cls: (
-        type[BaseVarValueInfoGenerator[ObsType, ActType]] | str
-    )
+    var_value_info_generator_cls: str
     var_value_info_generator_args: dict[str, Any] = {}
     reward_config: RewardConfig = RewardConfig()
     early_termination: bool = True
