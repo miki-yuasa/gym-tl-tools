@@ -110,6 +110,12 @@ while not done:
     done = terminated or truncated
 ```
 
+### Notes
+- The wrapper adds additional information to the `info` dict, including:
+    - `is_success`: Whether the automaton has reached a goal state.
+    - `is_failure`: Whether the automaton has reached a trap state.
+    - `is_aut_terminated`: Whether the automaton has been terminated.
+
 ### Example
 ```python
 import gymnasium as gym

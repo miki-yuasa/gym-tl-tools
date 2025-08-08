@@ -275,6 +275,12 @@ class TLObservationReward(
         - On `reset()`, the automaton is reset to its initial state, and the initial observation is augmented.
         - On `step(action)`, the automaton transitions based on the variable values extracted by the `var_value_info_generator`, and the reward is computed accordingly.
 
+    Notes
+    -----
+    - The wrapper adds additional information to the `info` dict, including:
+        - `is_success`: Whether the automaton has reached a goal state.
+        - `is_failure`: Whether the automaton has reached a trap state.
+        - `is_aut_terminated`: Whether the automaton has been terminated.
     Parameters
     ----------
     env : gymnasium.Env
@@ -622,11 +628,17 @@ class TLObservationReward(
         -------
         info : dict[str, Any]
             The updated info dictionary with success information.
+            Following keys are added or updated:
+            - is_success: Whether the automaton has reached a goal state.
+            - is_failure: Whether the automaton has reached a trap state.
+            - is_aut_terminated: Whether the automaton has been terminated.
         """
         info.update(
             {
                 "is_success": self.automaton.current_state
                 in self.automaton.goal_states,
+                "is_failure": self.automaton.current_state
+                in self.automaton.trap_states,
                 "is_aut_terminated": self.automaton.is_terminated,
             }
         )
