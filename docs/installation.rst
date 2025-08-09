@@ -4,7 +4,7 @@ Installation
 Requirements
 ------------
 
-- Python 3.10+
+- Python >=3.10, <3.14
 - NumPy >= 1.21
 - Gymnasium >= 0.26
 - Pydantic ^2.0
