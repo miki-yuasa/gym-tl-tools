@@ -1,0 +1,13 @@
+# Documentation build requirements
+sphinx>=7.0
+sphinx-rtd-theme>=2.0
+sphinx-autodoc-typehints>=1.25
+
+# Project dependencies needed for autodoc
+numpy>=1.21
+gymnasium>=0.26
+pydantic>=2.0
+spottl >= 2.13
+
+# Note: spottl is excluded as it may have installation issues on RTD
+# If needed, consider using a mock or conditional import in conf.py

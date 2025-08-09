@@ -176,3 +176,25 @@ If you use this package in your research, please cite it as follows:
 
 ## License
 MIT License
+
+## Documentation
+
+Full documentation is available at: https://miki-yuasa.github.io/gym-tl-tools/
+
+### Building Documentation Locally
+
+To build the documentation locally:
+
+```bash
+# Install documentation dependencies
+pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints
+
+# Build documentation
+./build_docs.sh
+
+# Or manually:
+cd docs
+sphinx-build -b html . _build/html
+```
+
+The built documentation will be available at `docs/_build/html/index.html`.

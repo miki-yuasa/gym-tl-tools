@@ -19,6 +19,11 @@ pytest = "^8.3.5"
 gym-multigrid = { git = "https://github.com/LIRA-illinois/gym-multigrid", rev = "dev" }
 stable-baselines3 = "^2.6.0"
 
+[tool.poetry.group.docs.dependencies]
+sphinx = "^7.0"
+sphinx-rtd-theme = "^2.0"
+sphinx-autodoc-typehints = "^1.25"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
