@@ -29,7 +29,7 @@ This document summarizes the documentation setup for gym-tl-tools.
 - **File**: `.github/workflows/docs.yml`
 - **Triggers**: Pushes to main branch, pull requests
 - **Actions**:
-  - Builds documentation using Poetry
+  - Builds documentation using UV
   - Deploys to GitHub Pages automatically
   - Uses proper caching for faster builds
 
@@ -59,7 +59,7 @@ This document summarizes the documentation setup for gym-tl-tools.
 cd docs && make html
 
 # Option 3: Direct sphinx command
-cd docs && sphinx-build -b html . _build/html
+cd docs && uv run sphinx-build -b html . _build/html
 ```
 
 ### Viewing Documentation
@@ -106,6 +106,8 @@ re.findall(r"State: (\d).*\[", raw_state)
 - `sphinx>=7.0`
 - `sphinx-rtd-theme>=2.0`  
 - `sphinx-autodoc-typehints>=1.25`
+
+These are now managed via `uv sync --group dev`
 
 ### Project Dependencies (for autodoc)
 - `numpy>=1.21`
