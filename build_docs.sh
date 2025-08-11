@@ -20,7 +20,7 @@ rm -rf _build/
 
 # Build documentation
 echo -e "${BLUE}Building HTML documentation...${NC}"
-python -m sphinx -b html . _build/html
+uv run sphinx-build -b html . _build/html
 
 echo -e "${GREEN}Documentation built successfully!${NC}"
 echo -e "${GREEN}Open _build/html/index.html in your browser to view.${NC}"

@@ -30,13 +30,19 @@ If you are developing locally, clone the repository and install in editable mode
    cd gym-tl-tools
    pip install -e .
 
-Using Poetry
--------------
+Using UV
+--------
 
-If you prefer using Poetry for dependency management:
+If you prefer using UV for dependency management:
 
 .. code-block:: bash
 
    git clone https://github.com/miki-yuasa/gym-tl-tools.git
    cd gym-tl-tools
-   poetry install
+   uv sync
+
+For development with additional dependencies (including documentation tools):
+
+.. code-block:: bash
+
+   uv sync --group dev

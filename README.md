@@ -15,7 +15,7 @@ Or, if you are developing locally, clone the repository and install in editable 
 ```bash
 git clone https://github.com/yourusername/gym-tl-tools.git
 cd gym-tl-tools
-pip install -e .
+uv sync
 ```
 
 ## Requirements
@@ -187,14 +187,14 @@ To build the documentation locally:
 
 ```bash
 # Install documentation dependencies
-pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints
+uv sync --group dev
 
 # Build documentation
 ./build_docs.sh
 
 # Or manually:
 cd docs
-sphinx-build -b html . _build/html
+uv run sphinx-build -b html . _build/html
 ```
 
 The built documentation will be available at `docs/_build/html/index.html`.
