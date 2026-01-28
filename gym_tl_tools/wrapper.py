@@ -17,7 +17,7 @@ from pydantic import (
 )
 from typing_extensions import TypedDict
 
-from gym_tl_tools.automaton import Automaton, Predicate
+from gym_tl_tools.automaton import Automaton, Predicate, PredicateProtocol
 from gym_tl_tools.parser import Parser
 
 
@@ -433,6 +433,8 @@ class TLObservationReward(
                 predicates.append(Predicate(**pred))
             elif isinstance(pred, Predicate):
                 predicates.append(pred)
+            elif isinstance(pred, PredicateProtocol):
+                predicates.append(Predicate(name=pred.name, formula=pred.formula))
             else:
                 raise TypeError(
                     f"Expected atomic_predicates to be a list of Predicate or dict, got {type(pred)}."

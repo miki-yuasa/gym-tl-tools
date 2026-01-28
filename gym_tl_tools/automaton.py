@@ -1,5 +1,5 @@
 import re
-from typing import Literal
+from typing import Literal, Protocol, runtime_checkable
 
 import numpy as np
 import spot
@@ -44,6 +44,12 @@ class Predicate(BaseModel):
         e.g. "d_robot_goal < 5".
     """
 
+    name: str
+    formula: str
+
+
+@runtime_checkable
+class PredicateProtocol(Protocol):
     name: str
     formula: str
 
