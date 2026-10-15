@@ -1,0 +1,59 @@
+# Baseline Ruff configuration aligned with project coding guidelines
+# (Google Python Style Guide + Strict Type & Readability Conventions)
+
+target-version = "py312"
+line-length = 80
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "D",   # pydocstyle (Google convention)
+    "ANN", # flake8-annotations
+    "UP",  # pyupgrade (generics, modern syntax)
+    "PTH", # flake8-use-pathlib (enforce pathlib over os.path)
+    "BLE", # flake8-blind-except (no bare except or except Exception)
+    "TRY", # tryceratops (exception handling idioms)
+    "S",   # flake8-bandit (security, asserts)
+    "RET", # flake8-return (direct returns)
+    "B",   # flake8-bugbear (common design gotchas)
+    "TID", # flake8-tidy-imports (banned APIs)
+    "FLY", # flynt (f-string formatting)
+    "RUF", # Ruff-specific rules
+]
+
+ignore = [
+    "ANN101", # Missing type annotation for self
+    "ANN102", # Missing type annotation for cls
+    "ANN401", # Dynamically typed expressions (Any)
+    "TRY003", # Avoid specifying long messages outside exception class
+    "D107",   # Missing docstring in __init__ (documented in class)
+]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.flake8-tidy-imports.banned-api]
+"dataclasses.dataclass" = { msg = "Use Pydantic's dataclass ('from pydantic.dataclasses import dataclass') or BaseModel instead." }
+"os.path" = { msg = "Use pathlib.Path instead of os.path functions." }
+
+[lint.per-file-ignores]
+"*_test.py" = [
+    "S101",   # asserts allowed in unit tests
+    "D100",   # module docstring not required in test modules
+    "D101",   # class docstring not required in test modules
+    "D102",   # method docstrings not required in test methods
+    "D103",   # test function docstrings not required
+    "ANN201", # return type annotations not required for test methods
+]
+"test_*.py" = ["S101", "D100", "D101", "D102", "D103", "ANN201"]
+"check_lint_hook.py" = [
+    "S603", # Subprocess invocation required for hook execution
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
