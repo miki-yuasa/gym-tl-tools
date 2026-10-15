@@ -1,4 +1,5 @@
 import re
+from collections.abc import Sequence
 from typing import Literal, Protocol, runtime_checkable
 
 import numpy as np
@@ -10,10 +11,9 @@ from gym_tl_tools.parser import Parser
 
 
 class Transition(BaseModel):
-    """
-    Represents a transition in a finite state automaton from a LTL formula.
+    """Represents a transition in a finite state automaton from a LTL formula.
 
-    Attributes
+    Attributes:
     ----------
     next_state : int
         The next automaton state after the transition.
@@ -31,10 +31,9 @@ class Transition(BaseModel):
 
 
 class Predicate(BaseModel):
-    """
-    Represents a predicate in a TL formula.
+    """Represents a predicate in a TL formula.
 
-    Attributes
+    Attributes:
     ----------
     name : str
         The name of the atomic predicate.
@@ -55,10 +54,9 @@ class PredicateProtocol(Protocol):
 
 
 class RobNextStatePair(BaseModel):
-    """
-    Represents a pair of robustness value and transition.
+    """Represents a pair of robustness value and transition.
 
-    Attributes
+    Attributes:
     ----------
     robustness : float
         The robustness value of the transition.
@@ -81,9 +79,9 @@ class AutomatonStateCounter(BaseModel):
 
 
 class Edge:
-    """
-    Represents an edge in a finite state automaton from a LTL formula.
-    Attributes
+    """Represents an edge in a finite state automaton from a LTL formula.
+
+    Attributes:
     ----------
     state : int
         The automaton state.
@@ -98,25 +96,24 @@ class Edge:
     """
 
     def __init__(self, raw_state: str, atomic_pred_names: list[str]):
-        """
-        Parameters
+        """Parameters
         ----------
         raw_state : str
             The raw state string from the automaton in HOA format.
         atomic_pred_names : list[str]
             The names of the atomic predicates used in the transitions.
         """
-        self.state: int = int(*re.findall("State: (\d).*\[", raw_state))
+        self.state: int = int(*re.findall(r"State: (\d).*\[", raw_state))
         self.transitions: list[Transition] = [
             Transition(
                 condition=replace_atomic_pred_ids_to_names(
-                    add_or_parentheses(re.findall("\[(.*)\]", transition)[0]),
+                    add_or_parentheses(re.findall(r"\[(.*)\]", transition)[0]),
                     atomic_pred_names,
                 ),
-                next_state=int(*re.findall("\[.*\] (\d)", transition)),
+                next_state=int(*re.findall(r"\[.*\] (\d)", transition)),
             )
             for transition in re.findall(
-                "(\[.*\] \d+)\n", raw_state.replace("[", "\n[")
+                "(\\[.*\\] \\d+)\n", raw_state.replace("[", "\n[")
             )
         ]
         # Check if the edge has an Inf(0) acceptance condition
@@ -135,7 +132,9 @@ class Edge:
         self.is_terminal_state = is_terminal_state
         # A terminal state is a trap state if it doesn't have Inf(0) acceptance
         self.is_trap_state: bool = (
-            True if not self.is_inf_zero_acc and self.is_terminal_state else False
+            True
+            if not self.is_inf_zero_acc and self.is_terminal_state
+            else False
         )
 
 
@@ -146,8 +145,7 @@ class Automaton:
         atomic_predicates: list[Predicate],
         parser: Parser = Parser(),
     ) -> None:
-        """
-        Initialize the Automaton with a temporal logic specification and atomic predicates.
+        """Initialize the Automaton with a temporal logic specification and atomic predicates.
         Parameters
         ----------
         tl_spec : str
@@ -168,18 +166,17 @@ class Automaton:
         aut: Twa = spot.translate(tl_spec, "Buchi", "state-based", "complete")
         aut_hoa: str = aut.to_str("hoa")
         self.num_states: int = int(aut.num_states())  # type: ignore
-        self.start: int = int(*re.findall("Start: (\d+)\n", aut_hoa))
+        self.start: int = int(*re.findall("Start: (\\d+)\n", aut_hoa))
 
-        num_used_aps: int = int(*re.findall('AP: (\d+) "', aut_hoa))
+        num_used_aps: int = int(*re.findall(r'AP: (\d+) "', aut_hoa))
         used_aps: list[str] = (
-            re.findall("AP: \d+ (.*)", aut_hoa)[0].replace('"', "").split()
+            re.findall(r"AP: \d+ (.*)", aut_hoa)[0].replace('"', "").split()
         )
         if len(used_aps) != num_used_aps:
             raise ValueError(
                 f"Number of used atomic predicates ({len(used_aps)}) does not match the number of atomic predicates in the automaton ({num_used_aps})."
             )
-        else:
-            self.used_aps: list[str] = used_aps
+        self.used_aps: list[str] = used_aps
 
         self.acc_name: str = re.findall("acc-name: (.*)\n", aut_hoa)[0]
         self.acceptance: str = re.findall("Acceptance: (.*)\n", aut_hoa)[0]
@@ -191,7 +188,8 @@ class Automaton:
             .replace("--END--", "\n")
         )
         raw_states: list[str] = [
-            raw_state + "\n" for raw_state in re.findall("(State:.*)\n", aut_hoa_states)
+            raw_state + "\n"
+            for raw_state in re.findall("(State:.*)\n", aut_hoa_states)
         ]
 
         untrapped_edges: list[Edge] = [
@@ -239,9 +237,7 @@ class Automaton:
         self.edges: tuple[Edge, ...] = tuple(untrapped_edges)
 
     def reset(self, seed: int | None = None) -> None:
-        """
-        Reset the automaton to its initial state.
-        """
+        """Reset the automaton to its initial state."""
         self.current_state: int = self.start
         self.status: Literal["intermediate", "goal", "trap"] = "intermediate"
         # Initialize Numpy RNG if a seed is provided
@@ -255,8 +251,7 @@ class Automaton:
         dense_reward: bool = False,
         dense_reward_scale: float = 0.01,
     ) -> tuple[float, int]:
-        """
-        Step the automaton to the next state based on the current predicate values.
+        """Step the automaton to the next state based on the current predicate values.
         This function updates the current state of the automaton based on the
         values of variables defining atomic predicates provided in `var_value_dict`.
 
@@ -269,21 +264,22 @@ class Automaton:
         terminal_state_reward : float = 5
 
 
-        Returns
+        Returns:
         -------
         reward : float
             The reward for the current step.
         new_state : int
             The new automaton state.
         """
-
         if not hasattr(self, "current_state"):
             raise ValueError(
                 " Error: The automaton has not been reset. Please call the reset() method before stepping."
             )
 
         ap_rob_dict: dict[str, float] = {
-            atom_pred.name: self.parser.tl2rob(atom_pred.formula, var_value_dict)
+            atom_pred.name: self.parser.tl2rob(
+                atom_pred.formula, var_value_dict
+            )
             for atom_pred in self.atomic_predicates
         }
 
@@ -318,8 +314,7 @@ class Automaton:
         dense_reward: bool = False,
         dense_reward_scale: float = 0.01,
     ) -> tuple[float, int]:
-        """
-        Calculate the reward of the step from a given automaton.
+        """Calculate the reward of the step from a given automaton.
 
         Parameters
         ----------
@@ -332,112 +327,110 @@ class Automaton:
         terminal_state_reward: float
             The reward given when the automaton reaches a terminal state.
 
-        Returns
+        Returns:
         -------
         reward : float
             The reward of the step based on the MDP and automaton states.
         next_aut_state : int
             The resultant automaton state after the step.
         """
-
         if curr_aut_state in self.goal_states:
             return (terminal_state_reward, curr_aut_state)
-        elif curr_aut_state in self.trap_states:
+        if curr_aut_state in self.trap_states:
             return (-terminal_state_reward, curr_aut_state)
+        curr_edge = self.edges[curr_aut_state]
+        transitions = curr_edge.transitions
+
+        (
+            pos_trap_rob_trans_pairs,
+            pos_non_trap_rob_trans_pairs,
+            zero_trap_rob_trans_pairs,
+            zero_non_trap_rob_trans_pairs,
+            non_trap_rob_trans_pairs,
+        ) = self.transition_robustness(transitions, ap_rob_dict)
+
+        trans_rob: float
+        next_aut_state: int
+        if len(pos_trap_rob_trans_pairs) == 1:
+            # If there is only one positive transition robustness leading to a trap state
+            trans_rob = pos_trap_rob_trans_pairs[0].robustness
+            next_aut_state = pos_trap_rob_trans_pairs[0].next_state
+        elif len(pos_non_trap_rob_trans_pairs) == 1:
+            # If there is only one positive transition robustness leading to a non-trap state
+            trans_rob = pos_non_trap_rob_trans_pairs[0].robustness
+            next_aut_state = pos_non_trap_rob_trans_pairs[0].next_state
+        elif zero_trap_rob_trans_pairs:
+            # If there are no positive transition robustnesses, but there are zero transition robustnesses
+            # leading to a trap state, select the first one
+            trans_rob = zero_trap_rob_trans_pairs[0].robustness
+            next_aut_state = zero_trap_rob_trans_pairs[0].next_state
+        elif zero_non_trap_rob_trans_pairs:
+            # If there are no positive transition robustnesses, but there are zero transition robustnesses
+            # leading to a non-trap state, select the first one
+            selected_index: int = int(
+                self._np_rng.integers(0, len(zero_non_trap_rob_trans_pairs))
+            )
+            trans_rob = zero_non_trap_rob_trans_pairs[selected_index].robustness
+            next_aut_state = zero_non_trap_rob_trans_pairs[
+                selected_index
+            ].next_state
+
         else:
-            curr_edge = self.edges[curr_aut_state]
-            transitions = curr_edge.transitions
-
-            (
+            raise ValueError(
+                "Error: No singular positive or zero transition robustnesses found for the current automaton state.",
+                "Current automaton state:",
+                curr_aut_state,
+                "Positive trap transitions:",
                 pos_trap_rob_trans_pairs,
+                "Positive non-trap transitions:",
                 pos_non_trap_rob_trans_pairs,
+                "Zero trap transitions:",
                 zero_trap_rob_trans_pairs,
+                "Zero non-trap transitions:",
                 zero_non_trap_rob_trans_pairs,
-                non_trap_rob_trans_pairs,
-            ) = self.transition_robustness(transitions, ap_rob_dict)
+            )
 
-            trans_rob: float
-            next_aut_state: int
-            if len(pos_trap_rob_trans_pairs) == 1:
-                # If there is only one positive transition robustness leading to a trap state
-                trans_rob = pos_trap_rob_trans_pairs[0].robustness
-                next_aut_state = pos_trap_rob_trans_pairs[0].next_state
-            elif len(pos_non_trap_rob_trans_pairs) == 1:
-                # If there is only one positive transition robustness leading to a non-trap state
-                trans_rob = pos_non_trap_rob_trans_pairs[0].robustness
-                next_aut_state = pos_non_trap_rob_trans_pairs[0].next_state
-            elif zero_trap_rob_trans_pairs:
-                # If there are no positive transition robustnesses, but there are zero transition robustnesses
-                # leading to a trap state, select the first one
-                trans_rob = zero_trap_rob_trans_pairs[0].robustness
-                next_aut_state = zero_trap_rob_trans_pairs[0].next_state
-            elif zero_non_trap_rob_trans_pairs:
-                # If there are no positive transition robustnesses, but there are zero transition robustnesses
-                # leading to a non-trap state, select the first one
-                selected_index: int = int(
-                    self._np_rng.integers(0, len(zero_non_trap_rob_trans_pairs))
-                )
-                trans_rob = zero_non_trap_rob_trans_pairs[selected_index].robustness
-                next_aut_state = zero_non_trap_rob_trans_pairs[
-                    selected_index
-                ].next_state
+        # Calculate the reward
+        reward: float
+        # Weight for reward calculation
+        # alpha: float = 0.7
+        # beta: float = 0.5
+        gamma: float = dense_reward_scale
+        delta: float = state_trans_reward_scale
 
+        if next_aut_state == curr_aut_state:
+            # non_trap_robs.remove(trans_rob)
+            # reward = -gamma * (
+            #    beta * 1 / max(non_trap_robs) - (1 - beta) * 1 / max(trap_robs)
+            # )
+
+            # reward = gamma * (
+            #    beta * 1 / max(non_trap_robs) - (1 - beta) * 1 / max(trap_robs)
+            # )
+            if dense_reward:
+                non_trap_robs: list[float] = [
+                    pair.robustness for pair in non_trap_rob_trans_pairs
+                ]
+                # ] + [pair.robustness for pair in zero_non_trap_rob_trans_pairs]
+                non_trap_robs.remove(trans_rob)
+                reward = gamma * max(non_trap_robs)
+            else:
+                reward = 0
+        else:
+            if next_aut_state not in self.trap_states:
+                reward = (
+                    delta * trans_rob
+                )  # alpha * trans_rob - (1 - alpha) * max(trap_robs)
+            elif next_aut_state in self.trap_states:
+                reward = (
+                    -delta * trans_rob
+                )  # -(1 - alpha) * max(non_trap_robs) - alpha * trans_rob
             else:
                 raise ValueError(
-                    "Error: No singular positive or zero transition robustnesses found for the current automaton state.",
-                    "Current automaton state:",
-                    curr_aut_state,
-                    "Positive trap transitions:",
-                    pos_trap_rob_trans_pairs,
-                    "Positive non-trap transitions:",
-                    pos_non_trap_rob_trans_pairs,
-                    "Zero trap transitions:",
-                    zero_trap_rob_trans_pairs,
-                    "Zero non-trap transitions:",
-                    zero_non_trap_rob_trans_pairs,
+                    "Error: the transition robustness doesn't exit in the robustness set."
                 )
 
-            # Calculate the reward
-            reward: float
-            # Weight for reward calculation
-            # alpha: float = 0.7
-            # beta: float = 0.5
-            gamma: float = dense_reward_scale
-            delta: float = state_trans_reward_scale
-
-            if next_aut_state == curr_aut_state:
-                # non_trap_robs.remove(trans_rob)
-                # reward = -gamma * (
-                #    beta * 1 / max(non_trap_robs) - (1 - beta) * 1 / max(trap_robs)
-                # )
-
-                # reward = gamma * (
-                #    beta * 1 / max(non_trap_robs) - (1 - beta) * 1 / max(trap_robs)
-                # )
-                if dense_reward:
-                    non_trap_robs: list[float] = [
-                        pair.robustness for pair in non_trap_rob_trans_pairs
-                    ]
-                    # ] + [pair.robustness for pair in zero_non_trap_rob_trans_pairs]
-                    non_trap_robs.remove(trans_rob)
-                    reward = gamma * max(non_trap_robs)
-                else:
-                    reward = 0
-            else:
-                if next_aut_state not in self.trap_states:
-                    reward = (
-                        delta * trans_rob
-                    )  # alpha * trans_rob - (1 - alpha) * max(trap_robs)
-                elif next_aut_state in self.trap_states:
-                    reward = (
-                        -delta * trans_rob
-                    )  # -(1 - alpha) * max(non_trap_robs) - alpha * trans_rob
-                else:
-                    raise ValueError(
-                        "Error: the transition robustness doesn't exit in the robustness set."
-                    )
-
-            return reward, next_aut_state
+        return reward, next_aut_state
 
     def transition_robustness(
         self,
@@ -450,8 +443,7 @@ class Automaton:
         list[RobNextStatePair],
         list[RobNextStatePair],
     ]:
-        """
-        Calculate the robustness of transitions in the automaton.
+        """Calculate the robustness of transitions in the automaton.
         This function computes the robustness values for each transition based on the
         conditions of the transitions and the robustness values of the atomic predicates.
 
@@ -462,7 +454,7 @@ class Automaton:
         ap_rob_dict: dict[str, float]
             A dictionary mapping the names of atomic predicates to their robustness values.
 
-        Returns
+        Returns:
         -------
         pos_trap_rob_trans_pairs : list[RobNextStatePair]
             A list of pairs of positive robustness values and transitions that lead to trap states.
@@ -473,7 +465,6 @@ class Automaton:
         zero_non_trap_rob_trans_pairs : list[RobNextStatePair]
             A list of pairs of zero robustness values and transitions that do not lead to trap states.
         """
-
         robs: list[float] = []
         pos_trap_rob_trans_pairs: list[RobNextStatePair] = []
         pos_non_trap_rob_trans_pairs: list[RobNextStatePair] = []
@@ -487,30 +478,44 @@ class Automaton:
             match (rob, trans.is_trapped_next):
                 case (0, True):
                     zero_trap_rob_trans_pairs.append(
-                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
+                        RobNextStatePair(
+                            robustness=rob, next_state=trans.next_state
+                        )
                     )
                 case (0, False):
                     zero_non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
+                        RobNextStatePair(
+                            robustness=rob, next_state=trans.next_state
+                        )
                     )
                     non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
+                        RobNextStatePair(
+                            robustness=rob, next_state=trans.next_state
+                        )
                     )
 
                 case (rob, True) if rob > 0:
                     pos_trap_rob_trans_pairs.append(
-                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
+                        RobNextStatePair(
+                            robustness=rob, next_state=trans.next_state
+                        )
                     )
                 case (rob, False) if rob > 0:
                     pos_non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
+                        RobNextStatePair(
+                            robustness=rob, next_state=trans.next_state
+                        )
                     )
                     non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
+                        RobNextStatePair(
+                            robustness=rob, next_state=trans.next_state
+                        )
                     )
                 case (rob, False) if rob < 0:
                     non_trap_rob_trans_pairs.append(
-                        RobNextStatePair(robustness=rob, next_state=trans.next_state)
+                        RobNextStatePair(
+                            robustness=rob, next_state=trans.next_state
+                        )
                     )
                 case _:
                     pass
@@ -524,9 +529,9 @@ class Automaton:
 
     @property
     def is_goaled(self) -> bool:
-        """
-        Check if the current state of the automaton is a goal state.
-        Returns
+        """Check if the current state of the automaton is a goal state.
+
+        Returns:
         -------
         bool
             True if the current state is a goal state, False otherwise.
@@ -535,9 +540,9 @@ class Automaton:
 
     @property
     def is_trapped(self) -> bool:
-        """
-        Check if the current state of the automaton is a trap state.
-        Returns
+        """Check if the current state of the automaton is a trap state.
+
+        Returns:
         -------
         bool
             True if the current state is a trap state, False otherwise.
@@ -546,9 +551,9 @@ class Automaton:
 
     @property
     def is_terminated(self) -> bool:
-        """
-        Check if the automaton is in a terminal state (goal or trap).
-        Returns
+        """Check if the automaton is in a terminal state (goal or trap).
+
+        Returns:
         -------
         bool
             True if the automaton is in a terminal state, False otherwise.
@@ -557,7 +562,7 @@ class Automaton:
 
 
 def add_or_parentheses(condition: str) -> str:
-    or_locs: list[int] = [m.start() for m in re.finditer("\|", condition)]
+    or_locs: list[int] = [m.start() for m in re.finditer(r"\|", condition)]
 
     condition_list: list[str] = list(condition)
 
@@ -565,7 +570,10 @@ def add_or_parentheses(condition: str) -> str:
 
     if or_locs:
         for loc in or_locs:
-            if condition_list[loc - 1] == " " and condition_list[loc + 1] == " ":
+            if (
+                condition_list[loc - 1] == " "
+                and condition_list[loc + 1] == " "
+            ):
                 condition_list[loc - 1] = ")"
                 condition_list[loc + 1] = "("
             else:
@@ -577,11 +585,13 @@ def add_or_parentheses(condition: str) -> str:
     return new_condition
 
 
-def replace_atomic_pred_ids_to_names(condition: str, atom_prop_names: list[str]):
-    spec: str = condition
-    # Replace atomic props in numeric IDs to their actual names (ex. '0'->'psi_0')
-    for i, atom_prop_name in enumerate(reversed(atom_prop_names)):
-        target = str(len(atom_prop_names) - 1 - i)
-        spec = spec.replace(target, atom_prop_name)
-
-    return spec
+def replace_atomic_pred_ids_to_names(
+    condition: str, atom_prop_names: Sequence[str]
+) -> str:
+    """Replaces numeric atomic proposition IDs with predicate names."""
+    name_by_id = {str(i): name for i, name in enumerate(atom_prop_names)}
+    return re.sub(
+        r"\b\d+\b",
+        lambda match: name_by_id.get(match.group(0), match.group(0)),
+        condition,
+    )
